@@ -228,6 +228,16 @@ early-init.elの領域はここまでなのでフッタを書く
 
 #+end_src
 
+*** define get hist function
+解析に便利そうなので用意しておく
+#+begin_src emacs-lisp :tangle init.el
+  (defun get-loaded-elisps
+      nil
+    (replace-regexp-in-string
+     "\n" " " (replace-regexp-in-string
+               "^.*/\\(.*\\.\\(elc\\|el\\)\\).*$" "\\1" (replace-regexp-in-string " (\"" "\n(\"" (prin1-to-string load-history)))))
+#+end_src
+
 *** disable IME
 多分DDSKK使うけどfcitxは手動で止める必要があるっぽいので
 0.02/0.01: たぶんこれなら上手くいく
@@ -251,7 +261,15 @@ when window-system: -nwは別口で止めたいので
                      :command '("fcitx5-remote" "-s" "keyboard-us")))))))
 #+end_src
 
-*** package install
+*** load theme
+ef-themesよりef-frostを使う 見た目がとてもよいので
+#+begin_src emacs-lisp :tangle init.el
+  (add-to-list
+   'load-path
+   (! (locate-user-emacs-file "plugins/ef-themes")))
+  (require 'ef-themes)
+  (ef-themes-select 'ef-frost)
+#+end_src
 
 *** settings
 基本的な設定を書いていく がここで設定する値って少なそう

@@ -1,0 +1,3 @@
+[submodule "plugins/ef-themes"]
+	path = plugins/ef-themes
+	url = git@github.com:protesilaos/ef-themes
