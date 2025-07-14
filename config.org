@@ -1,0 +1,412 @@
+#+TITLE: config
+#+AUTHOR: Osmium_1008
+#+STARTUP: show2levels
+
+* compile
+ここのコードを実行すればコンパイルまでされる感じにしておきたい とりあえず出力機構だけ
+#+begin_src emacs-lisp :results file :file config_babel.log :output-dir log/
+  (org-babel-tangle)
+  (let ((current_dir (file-name-directory (buffer-file-name))))
+    (let ((lisp_dir (concat current_dir "lisp")))
+      (unless (file-directory-p lisp_dir) (mkdir lisp_dir)))
+    (org-babel-tangle-file (concat current_dir "custom-azik.org")))
+#+end_src
+
+#+RESULTS:
+[[file:log/config_babel.log]]
+
+こっちはバイトコンパイルとか 新環境の方でやってね
+#+begin_src emacs-lisp :results file :file config_compile.log :output-dir log/
+  (defun canc (filename)
+    (byte-compile-file filename)
+    (native-compile filename))
+  (let ((current_dir (file-name-directory (buffer-file-name))))
+    (let ((early_init_el (concat current_dir "early-init.el"))
+          (init_el (concat current_dir "init.el"))
+          (custom_azik_el (concat current_dir "lisp/custom-azik.el")))
+      (canc early_init_el)
+      (canc init_el)
+      (canc custom_azik_el)))
+#+end_src
+
+#+RESULTS:
+[[file:log/config_compile.log]]
+
+* Launch routine
+起動順序に合わせた設定を行うべきであるため、読込順序を書きつつ順序に合わせた設定を記述することとする。
+[[https://www.gnu.org/software/emacs/manual/html_node/elisp/Startup-Summary.html][Startup Summary]] も参照
+** Before loading early-init.el
+おおよそバイナリの起動やらstartup.elの読み込みやらで発生する操作である模様。
+ユーザーはいじることができない領域
+1. load-path変数の設定(subdirs.el)
+2. leim-list.elの読込(IMの初期化?)
+3. init-timeの計測開始
+4. 言語設定の初期化
+   - されていない模様であるが...
+5. コマンドオプションの解釈
+
+** 6. Load early-init.el
+=package.el= やらGUI設定やらに介入できる設定ファイルらしい。
+~--batch~ や ~-q~, ~-Q~ モードでは行われない。
+*** Header
+いつものおまじない
+#+begin_src emacs-lisp :tangle early-init.el
+  ;;; early-init.el --- setting files for GUI etc. -*- coding: utf-8; lexical-binding: t; -*-
+  ;; Author: Osmium_1008 (osmium1008@gmail.com)
+  ;; Version: 1.0
+
+  ;;; Commentary:
+  ;; leaf.elとか使わない形で書き直した。
+  ;; 内部処理フレンドリーな形で書き直...せてたらいいなぁ
+
+  ;;; Code:
+
+#+end_src
+
+*** create alias
+#+begin_src emacs-lisp :tangle early-init.el
+  (defalias '! 'eval-when-compile)
+#+end_src
+
+*** set some while-initialize settings
+magic-file-name: 処理として重い上に使わないため
+gc-cons-threshold: そんなGCとか必要になる処理挟まないと思うので
+#+begin_src emacs-lisp :tangle early-init.el
+  (defconst my/saved-file-name-handler-alist file-name-handler-alist)
+  (setopt file-name-handler-alist nil)
+  (setopt gc-cons-threshold most-positive-fixnum)
+#+end_src
+
+*** OS-distinction
+OSやら起動モードやらを判別できるように
+#+begin_src emacs-lisp :tangle early-init.el
+  (defconst my/IS_MAC (! (eq system-type 'darwin)))
+  (defconst my/IS_LINUX (! (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix))))
+  (defconst my/IS_WINDOWS (! (memq system-type '(cygwin windows-nt ms-dos))))
+  ;; is in terminal: check window-system == nil
+
+#+end_src
+
+*** set library path
+これやっておかないとelnがエラー吐く
+#+begin_src emacs-lisp :tangle early-init.el
+  (if my/IS_MAC
+      (setenv "LIBRARY_PATH"
+              (! (string-join
+                  '("opt/homebrew/opt/gcc/lib/gcc/current"
+                    "/opt/homebrew/opt/libgccjit/lib/gcc/current"
+                    "/opt/homebrew/opt/gcc/lib/gcc/current/gcc/aarch64-apple-darwin24/15")
+                  ":")))
+    nil)
+
+#+end_src
+
+*** suppress custom output
+#+begin_src emacs-lisp :tangle early-init.el
+  (with-eval-after-load 'cus-edit
+    (setopt custom-file (! (locate-user-emacs-file "custom.el"))))
+
+#+end_src
+
+*** set user lisp dir
+.emacs.d/lispを読めるようにしておく 使うので
+#+begin_src emacs-lisp :tangle early-init.el
+  (add-to-list 'load-path (! (locate-user-emacs-file "lisp")))
+
+#+end_src
+
+*** options declared in C source code
+雑多な設定を書いていく これはここでいいはず
+#+begin_src emacs-lisp :tangle early-init.el
+  (setopt frame-resize-pixelwise t ; ピクセル単位でウィンドウサイズを変更する
+        enable-recursive-minibuffers t ; 再帰的に小バッファを積めるようにする
+        debug-on-error t ; エラーを吐いた段階でデバッガを起動して情報を出す
+        tab-width 4 ; タブ文字は4空白分として表示する。
+        user-full-name "Suomi Sawano" ; ここで設定できてしまうらしい
+        user-login-name "osmium1008" ; 割といろんなところで使うはずの値
+        display-line-numbers nil ; 行番号を表示しない
+        history-length 1000 ; 履歴サイズ
+        history-delete-duplicates t ; 重複する履歴を消す
+        ring-bell-function 'ignore ; ビープ音を鳴らさないようにする
+        text-quoting-style 'straight ; 素直な引用符遣いを実現する
+        use-dialog-box nil ; yes/noをクリックで選べるようになるらしい いらない
+        scroll-preserve-screen-position t ; 画面外にカーソルが出たら移動させる
+        scroll-conservatively 100 ; C-n やら C-p で画面外に飛び出した時の挙動の設定らしい 1マスずつ
+        truncate-lines t ; 折り返しをさせない
+        use-file-dialog nil ; フォルダをFinderで作らせたりするらしい いらない
+        )
+#+end_src
+
+*** native compile options
+どこで設定するのかよくわからない とりあえずhookを生成しておく
+#+begin_src emacs-lisp :tangle early-init.el
+  (with-eval-after-load 'comp
+    (setopt native-comp-speed 3))
+  (with-eval-after-load 'comp-run
+    (setopt native-comp-async-jobs-number 8
+          native-comp-always-compile t))
+  (with-eval-after-load 'warnings
+    ;; native comp の warning を抑える
+    (setopt warning-suppress-types '((comp))))
+
+#+end_src
+
+** 7. load packages by package.el
+elpacaとか使う場合これを抑制しておかなければならない。
+こちらも ~--batch~ とか ~-q~, ~-Q~ とかでは行われない。
+#+begin_src emacs-lisp :tangle early-init.el
+  (with-eval-after-load 'package
+    (setopt package-enable-at-startup nil))
+
+#+end_src
+
+** 8. initialize window system
+~--batch~ でない限りウィンドウシステムの初期化が行われる模様
+あまり特筆すべき事柄はない。
+
+** 9. run ~before-init-hook~
+発火させるらしい 特にここに挟み込む処理もないし放置
+
+** 10. create graphical frame, 11. set default face and bars
+~--batch~ とか =daemon= モードだと発火しない。
+このタイミングでフォントとかメニューとかGUIに関する設定を読む。のでそういった設定を書いておく。
+default-frame-alistはいろんなところで読み取られるので割と便利
+#+begin_src emacs-lisp :tangle early-init.el
+  (add-to-list 'default-frame-alist '(fullscreen . maximized))
+  (add-to-list 'default-frame-alist '(font . "UDEV Gothic NFLG-13")) ; set-face-attr より速い
+  (let ((udg (font-spec :family "UDEV Gothic NFLG" :height 130))) ; 書いておかないとフォントバグる
+    (set-fontset-font t 'katakana-jisx0201 udg)
+    (set-fontset-font t 'katakana-sjis udg)
+    (set-fontset-font t 'japanese-jisx0213-a udg)
+    (set-fontset-font t 'latin-jisx0201 udg)
+    (set-fontset-font t 'japanese-jisx0208 udg)
+    (set-fontset-font t 'japanese-jisx0208-1978 udg)
+    (set-fontset-font t 'japanese-jisx0212 udg)
+    (set-fontset-font t 'japanese-jisx0213-1 udg)
+    (set-fontset-font t 'japanese-jisx0213-2 udg)
+    (set-fontset-font t 'japanese-jisx0213.2004-1 udg))
+  (scroll-bar-mode -1)
+  (tool-bar-mode -1)
+  (blink-cursor-mode -1)
+  (if my/IS_MAC
+      (with-eval-after-load 'menu-bar
+        (if (daemonp)
+            (add-hook 'server-after-make-frame-hook
+                      (lambda nil (menu-bar-mode -1)))
+          (add-hook 'after-init-hook ;; load直後だとなんか上手く行かなかった。
+                    (lambda nil (menu-bar-mode -1)))))
+    (menu-bar-mode -1))
+
+#+end_src
+
+** 12. custom-reevaluate-setting
+するらしい
+
+** 13. load site-start.el
+ない ~--batch~ や ~-Q~ などでは発火しない
+
+** early-init.el footer
+early-init.elの領域はここまでなのでフッタを書く
+#+begin_src emacs-lisp :tangle early-init.el
+  (provide 'early-init)
+  ;;; early-init.el ends here
+#+end_src
+
+** 14. load init.el
+だいたいの設定を書くファイル このタイミングでは発火させないものも結構多い
+例によって ~--batch~ や ~-q~, ~-Q~ などでは発火しない
+*** Header
+#+begin_src emacs-lisp :tangle init.el
+  ;;; init.el --- Emacs initial settings -*- coding: utf-8; lexical-binding: t; -*-
+  ;; Author: Osmium_1008 (osmium1008@gmail.com)
+  ;; Version: 0.1
+
+  ;;; Commentary:
+  ;; el-getあたり使うかな 何使うか決めてない
+
+  ;;; Code:
+
+#+end_src
+
+*** disable IME
+多分DDSKK使うけどfcitxは手動で止める必要があるっぽいので
+0.02/0.01: たぶんこれなら上手くいく
+when window-system: -nwは別口で止めたいので
+#+begin_src emacs-lisp
+  (when my/IS_LINUX
+    (if (daemonp)
+        (add-hook 'server-after-make-frame-hook
+                  (lambda nil
+                    (when window-system
+                     (sleep-for 0.02)
+                     (make-process
+                      :name "fcitx5-remote"
+                      :command '("fcitx5-remote" "-s" "keyboard-us")))))
+      (when window-system
+        (add-hook 'after-init-hook
+                  (lambda nil
+                    (sleep-for 0.01)
+                    (make-process
+                     :name "fcitx5-remote"
+                     :command '("fcitx5-remote" "-s" "keyboard-us")))))))
+#+end_src
+
+*** package install
+
+*** settings
+基本的な設定を書いていく がここで設定する値って少なそう
+#+begin_src emacs-lisp :tangle init.el
+  (global-set-key (kbd "M-ESC ESC") 'keyboard-quit) ; ESC3連打とC-gの挙動を合わせる
+  (setopt user-mail-address "osmium1008@gmail.com")
+
+  (with-eval-after-load 'mwheel
+    (setopt mouse-wheel-scroll-amount '(1 ((control) . 5)) ; マウスホイールの進み方 5マス進めるよ
+          mouse-wheel-tilt-scroll t)) ; 横スクロール
+
+  (with-eval-after-load 'simple
+    (setopt kill-read-only-ok t
+  	  kill-whole-line t
+  	  indent-tabs-mode nil)) ; setqだとなにかしらのタイミングが合ってない
+
+  (setopt tab-always-indent t) ; indent.elはwith-eval-after-loadを発火させない
+
+  (setopt auto-save-file-name-transforms ; file.elもwith-eval-after-loadを発火させない
+        `((".*" ,(eval-when-compile(locate-user-emacs-file "backup/")) t))
+        backup-directory-alist
+        `((".*" . ,(eval-when-compile(locate-user-emacs-file "backup"))))
+        version-control t
+        delete-old-versions t
+        auto-save-visited-interval 30)
+
+  (with-eval-after-load 'vc-git
+    (advice-add 'vc-git-mode-line-string :filter-return
+                (lambda (str) (substring str 4))))
+
+  (with-eval-after-load 'mule-cmds
+    (prefer-coding-system 'utf-8-unix))
+
+  (require 'which-key)
+  (which-key-setup-side-window-right-bottom)
+  (which-key-mode)
+
+  ;;(require 'delsel)
+  ;;(delete-selection-mode)
+
+  (require 'elec-pair)
+  (electric-pair-mode)
+
+  ;;(require 'hl-line)
+  ;;(global-hl-line-mode)
+
+  (require 'paren)
+  (show-paren-mode)
+
+  (defvar my/is-autorevert-loaded nil)
+  (add-hook 'find-file-hook ; なにかファイルを開いたら有効化する
+            (lambda nil
+              (unless my/is-autorevert-loaded
+                (setq my/is-autorevert-loaded t)
+                (require 'autorevert))
+              (global-auto-revert-mode t)))
+
+#+end_src
+
+** 15. load default.el
+いつもの3モードやら ~inhibit-default-init~ が有効化されてた場合行われない。
+一応無効化だけやっておくか...
+#+begin_src emacs-lisp :tangle init.el
+  (setopt inhibit-default-init t)
+
+#+end_src
+
+** 16. load abbrev file
+~abbrev-file-name~ に設定された略称記録ファイル(?)を読み出す。
+~--batch~ では発火しない。
+
+** 17. stop init-time timer
+起動時間はここまでを測っている模様
+なので次以降のステップでかかる時間は ~emacs-init-time~ では持ってこれない
+
+** 18. run after-init-hook and delayed-warnings-hook
+after-init-hookに引っ掛けられた設定を有効化した上で、初期化中の溜め込まれた警告メッセージを吐く。
+Elpacaはこの段階で諸々のインストールを行う模様
+
+** 19. set major-mode
+~initial-major-mode~ に従ってmajor-modeを設定する。
+major-modeに引っ掛けるhookはここで発動するけど場合によってはelpacaの読み込み処理は終わっていないので注意が必要。
+*** org-mode
+#+begin_src emacs-lisp :tangle init.el
+  (with-eval-after-load 'org
+    (setopt org-startup-folded 'content))
+  (add-hook 'org-mode-hook
+            (lambda nil (setopt org-use-speed-commands t)))
+#+end_src
+
+** 20. run tty-setup-hook
+~-nw~ (あるいはそれ相当)で実行されていて ~--batch~ でなければ発火する。
+=emacsclient= 利用だと初回接続時だけ発火するっぽい。
+
+** 21. display initial echo area message
+どうやら "C-h C-a でGNU Emacsに関する情報を表示できますよ" ってやつのことらしい。
+~inhibit-startup-echo-area-message~ で抑制できる。
+#+begin_src emacs-lisp :tangle init.el
+  (setq inhibit-startup-echo-area-message "osmium1008") ; setoptだと動かない
+
+#+end_src
+
+** 22. process command-line options
+まだ実行されてないオプションがあれば実行する。
+何がここで実行されるんだっけ...
+
+** 23. exit Emacs when emacs launched as ~--batch~ mode
+~--batch~ はここまで
+
+** 24. initialize *scratch* buffer
+空の *scratch* が存在すれば初期メッセージを吐く
+
+** 25. show file specified by ~initial-buffer-choice~
+ファイルが引数として与えられてれば追加で表示する。
+nilなら引数のファイルか *startup* か、あるいは *scratch* を単独で表示する模様。
+
+** 26. run emacs-startup-hook
+ここで実行すべき処理も思い浮かばないが、実行されるらしい。
+
+** 27. modify frame parameter if changed by init.el
+default-frame-alistとかが変更されてればここで反映する。
+
+** 28. run window-setup-hook
+27.を発火させてるか否かしか26.との変化がない 多分どちらも使わない...
+
+** 29. display startup screen
+しないで
+~--no-splash~ や ~-Q~ でも抑制される 本当に?
+#+begin_src emacs-lisp :tangle init.el
+  (setopt inhibit-startup-screen t)
+
+#+end_src
+
+** 30. launch emacs daemon
+~--daemon~ とかで起動していたらその起動を行う。
+
+** 31. restore emacs-session
+Xセッションマネージャーの機能らしい 使わない気がする。
+
+** extra. server-after-make-frame-hook
+上の方で何度か出てきているフック
+emacsclientの起動時に発火するものでそちらで起動している場合設定はここで行わなければいけないらしい。
+
+** extra. with-eval-after-load
+対象パッケージが読み込まれ次第発火するhook まあ適当に使うといい
+
+** restore while-initialize settings to default
+#+begin_src emacs-lisp :tangle init.el
+  (setopt file-name-handler-alist my/saved-file-name-handler-alist)
+  (setopt gc-cons-threshold (! (* 1024 1024 128)))
+#+end_src
+
+** init.el footer
+起動ルーチンはここまで。
+#+begin_src emacs-lisp :tangle init.el
+  (provide 'init)
+  ;;; init.el ends here
+#+end_src

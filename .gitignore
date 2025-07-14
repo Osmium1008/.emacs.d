@@ -1,0 +1,7 @@
+*
+!/.gitignore
+!/README.org
+!/LICENSE.org
+!/config.org
+!/custom-azik.org
+!/load-hist.log
