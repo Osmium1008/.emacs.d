@@ -63,9 +63,11 @@
 
 #+end_src
 
-*** create alias
-#+begin_src emacs-lisp :tangle early-init.el
-  (defalias '! 'eval-when-compile)
+*** launch cpu profiler
+立てておく
+#+begin_src emacs-lisp
+  (require 'profiler)
+  (profiler-start 'cpu)
 #+end_src
 
 *** set some while-initialize settings
@@ -80,9 +82,9 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
 *** OS-distinction
 OSやら起動モードやらを判別できるように
 #+begin_src emacs-lisp :tangle early-init.el
-  (defconst my/IS_MAC (! (eq system-type 'darwin)))
-  (defconst my/IS_LINUX (! (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix))))
-  (defconst my/IS_WINDOWS (! (memq system-type '(cygwin windows-nt ms-dos))))
+  (defconst my/IS_MAC (eval-when-compile (eq system-type 'darwin)))
+  (defconst my/IS_LINUX (eval-when-compile (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix))))
+  (defconst my/IS_WINDOWS (eval-when-compile (memq system-type '(cygwin windows-nt ms-dos))))
   ;; is in terminal: check window-system == nil
 
 #+end_src
@@ -92,7 +94,7 @@ OSやら起動モードやらを判別できるように
 #+begin_src emacs-lisp :tangle early-init.el
   (if my/IS_MAC
       (setenv "LIBRARY_PATH"
-              (! (string-join
+              (eval-when-compile (string-join
                   '("opt/homebrew/opt/gcc/lib/gcc/current"
                     "/opt/homebrew/opt/libgccjit/lib/gcc/current"
                     "/opt/homebrew/opt/gcc/lib/gcc/current/gcc/aarch64-apple-darwin24/15")
@@ -104,14 +106,14 @@ OSやら起動モードやらを判別できるように
 *** suppress custom output
 #+begin_src emacs-lisp :tangle early-init.el
   (with-eval-after-load 'cus-edit
-    (setopt custom-file (! (locate-user-emacs-file "custom.el"))))
+    (setopt custom-file (eval-when-compile (locate-user-emacs-file "custom.el"))))
 
 #+end_src
 
 *** set user lisp dir
 .emacs.d/lispを読めるようにしておく 使うので
 #+begin_src emacs-lisp :tangle early-init.el
-  (add-to-list 'load-path (! (locate-user-emacs-file "lisp")))
+  (add-to-list 'load-path (eval-when-compile (locate-user-emacs-file "lisp")))
 
 #+end_src
 
@@ -261,12 +263,20 @@ when window-system: -nwは別口で止めたいので
                      :command '("fcitx5-remote" "-s" "keyboard-us")))))))
 #+end_src
 
+*** define macro for load plugins
+#+begin_src emacs-lisp :tangle init.el
+  (eval-when-compile
+    (defmacro add-plugin (plugin-name)
+      (list 'add-to-list ''load-path
+            (list 'eval-when-compile
+                  (list 'locate-user-emacs-file
+                        (list 'concat "plugins/" plugin-name))))))
+#+end_src
+
 *** load theme
 ef-themesよりef-frostを使う 見た目がとてもよいので
 #+begin_src emacs-lisp :tangle init.el
-  (add-to-list
-   'load-path
-   (! (locate-user-emacs-file "plugins/ef-themes")))
+  (add-plugin "ef-themes")
   (require 'ef-themes)
   (ef-themes-select 'ef-frost)
 #+end_src
@@ -419,7 +429,7 @@ emacsclientの起動時に発火するものでそちらで起動している場
 ** restore while-initialize settings to default
 #+begin_src emacs-lisp :tangle init.el
   (setopt file-name-handler-alist my/saved-file-name-handler-alist)
-  (setopt gc-cons-threshold (! (* 1024 1024 128)))
+  (setopt gc-cons-threshold (eval-when-compile (* 1024 1024 128)))
 #+end_src
 
 ** init.el footer
