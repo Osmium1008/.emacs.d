@@ -4,3 +4,9 @@
 [submodule "plugins/ddskk"]
 	path = plugins/ddskk
 	url = git@github.com:skk-dev/ddskk
+[submodule "plugins/ddskk-posframe"]
+	path = plugins/ddskk-posframe
+	url = git@github.com:conao3/ddskk-posframe
+[submodule "plugins/posframe"]
+	path = plugins/posframe
+	url = git@github.com:tumashu/posframe

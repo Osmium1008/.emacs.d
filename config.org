@@ -9,6 +9,7 @@
     (cd (concat current_dir "plugins/ddskk"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/test"))
+    (add-to-list 'load-path (concat current_dir "plugins/posframe"))
     (async-shell-command "/usr/bin/make")
     (cd current_dir)
     (let ((lisp_dir (concat current_dir "lisp")))
@@ -24,7 +25,7 @@
 こっちはバイトコンパイルとか 新環境の方でやってね
 #+begin_src emacs-lisp :results file :file config_compile.log :output-dir log/
   (let ((current_dir (file-name-directory (buffer-file-name))))
-    (byte-recompile-directory current_dir 0)
+    (byte-recompile-directory current_dir 0 t)
     (native-compile (concat current_dir "init.el"))
     (native-compile (concat current_dir "early-init.el"))
     (native-compile (concat current_dir "lisp/custom-azik.el"))
@@ -196,7 +197,6 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
         use-dialog-box nil ; yes/noをクリックで選べるようになるらしい いらない
         scroll-preserve-screen-position t ; 画面外にカーソルが出たら移動させる
         scroll-conservatively 100 ; C-n やら C-p で画面外に飛び出した時の挙動の設定らしい 1マスずつ
-        truncate-lines t ; 折り返しをさせない
         use-file-dialog nil ; フォルダをFinderで作らせたりするらしい いらない
         )
 
@@ -232,6 +232,7 @@ elpacaとか使う場合これを抑制しておかなければならない。
 ** 9. run ~before-init-hook~
 発火させるらしい skkがなにやらここで発火させたい処理があるらしいのでここで読み込んでおく
 いつも通りの設定...のはず posframeはやっぱり入ってないと変換できないっぽい
+ついでにddskk-posframe君も読み込んでおく
 #+begin_src emacs-lisp :tangle early-init.el
   (add-plugin "ddskk")
   (with-eval-after-load 'skk-vars
@@ -239,6 +240,7 @@ elpacaとか使う場合これを抑制しておかなければならない。
   (with-eval-after-load 'skk-vars
     (setq
      skk-user-directory (eval-when-compile (locate-user-emacs-file "ddskk"))
+                                          ; 結局それぞれについて設定しないと動かないことに気付いた これいるのかな...
      skk-jisyo (eval-when-compile (locate-user-emacs-file "ddskk/jisyo"))
      skk-backup-jisyo (eval-when-compile (locate-user-emacs-file "ddskk/jisyo.bak"))
      skk-emacs-id-file (eval-when-compile (locate-user-emacs-file "ddskk/emacs-id"))
@@ -247,27 +249,38 @@ elpacaとか使う場合これを抑制しておかなければならない。
      skk-study-backup-file (eval-when-compile (locate-user-emacs-file "ddskk/study.bak"))
      skk-bayesian-history-file (eval-when-compile (locate-user-emacs-file "ddskk/bayesian"))
      skk-bayesian-corpus-file (eval-when-compile (locate-user-emacs-file "ddskk/corpus"))
-     skk-egg-like-newline t
-     skk-server-host "localhost"
-     skk-server-portnum 1178
-     skk-init-file ""
-     skk-byte-compile-init-file nil
-     skk-latin-mode-string "_@"
-     skk-hiragana-mode-string "あ"
-     skk-katakana-mode-string "ア"
-     skk-jisx0208-latin-mode-string "Ａ"
-     skk-abbrev-mode-string "aA"
-     skk-henkan-strict-okuri-precedence t
-     skk-delete-implies-kakutei nil
-     skk-delete-okuri-when-quit t
-     skk-indicator-prefix "SKK:["
+     skk-egg-like-newline t ; 確定時に改行文字を入力しない
+     skk-server-host "localhost" ; skk-serverを使用する
+     skk-server-portnum 1178 ; skk-serverを使用する
+     skk-init-file "" ; .skkを生成しない 設定はすべてここにある
+     skk-byte-compile-init-file nil ; .skkがないのでcompileももちろんしない
+     skk-latin-mode-string "_@" ; 'latin modeでの表示
+     skk-hiragana-mode-string "あ" ; ひらがな入力での表示
+     skk-katakana-mode-string "ア" ; カタカナ入力での表示
+     skk-jisx0208-latin-mode-string "Ａ" ; 全角英数
+     skk-abbrev-mode-string "aA" ; 省略モード 専らカタカナ英語入力モードとして使われている
+     skk-henkan-strict-okuri-precedence t ; 賢い送り仮名変換
+     skk-delete-implies-kakutei nil ; 削除入力をしたときに確定してから削除する...のかな? 使わないからわからん
+     skk-delete-okuri-when-quit t ; 送り仮名入力をやめたときに送り仮名を残さない
+     skk-indicator-prefix "SKK:[" ; それっぽいインジケータ
      skk-indicator-suffix-func #'(lambda (mode) "]")
-     skk-use-color-cursor nil
-     skk-indicator-use-cursor-color nil
-     skk-isearch-start-mode 'latin))
+     skk-use-color-cursor nil ; 色は固定 モードぐらい脳が覚えてる...はず
+     skk-indicator-use-cursor-color nil ; 同じく
+     skk-use-face t ; どうせフルカラー環境で使うので...
+     skk-isearch-start-mode 'latin)) ; そもそもisearchはあまり使わなくなる気もするが...
   (require 'skk-autoloads)
   (setq default-input-method "japanese-skk"
         skk-preload nil)
+  ;; ddskk-posframe: 見慣れたポップアップでの補完ウィンドウを出してくれる
+  (add-plugin "posframe")
+  (add-plugin "ddskk-posframe")
+  (add-hook 'skk-mode-hook
+            (lambda nil
+              (require 'ddskk-posframe)))
+  (with-eval-after-load 'ddskk-posframe
+    (ddskk-posframe-mode t))
+  (with-eval-after-load 'ddskk-posframe
+    (setq ddskk-posframe-border-width 2))
 
 #+end_src
 
@@ -299,11 +312,29 @@ default-frame-alistはいろんなところで読み取られるので割と便�
     (custom-set-faces
      `(vc-edited-state
        ((t :foreground ,(eval-when-compile (ef-themes-get-color-value 'blue-cooler)) :inherit bold)))))
-  (add-hook 'ef-themes-post-load-hook
-            (lambda nil
-              (custom-set-faces
-               `(vc-edited-state
-                 ((t :foreground ,(ef-themes-get-color-value 'blue-cooler) :inherit bold))))))
+  (with-eval-after-load 'vc-hooks
+    (add-hook 'ef-themes-post-load-hook
+              (lambda nil
+                (custom-set-faces
+                 `(vc-edited-state
+                   ((t :foreground ,(ef-themes-get-color-value 'blue-cooler) :inherit bold)))))))
+  (with-eval-after-load 'ddskk-posframe ; グレーっぽい候補ウィンドウを出してくれる しかもいい感じにそれぞれのテーマの色に追従してくれる
+    (custom-set-faces
+     `(ddskk-posframe ((t
+                        :foreground ,(eval-when-compile (ef-themes-get-color-value 'fg-dim))
+                        :background ,(eval-when-compile (ef-themes-get-color-value 'bg-dim))
+                        )))
+     `(ddskk-posframe-border ((t
+                               :background ,(eval-when-compile (ef-themes-get-color-value 'bg-alt)))))))
+  (with-eval-after-load 'ddskk-posframe
+    (add-hook 'ef-themes-post-load-hook
+              (lambda nil
+                (custom-set-faces
+                 `(ddskk-posframe ((t
+                                    :foreground ,(ef-themes-get-color-value 'fg-dim)
+                                    :background ,(ef-themes-get-color-value 'bg-dim)
+                                    )))
+                 `(ddskk-posframe-border ((t :background ,(ef-themes-get-color-value 'bg-alt))))))))
 
 #+end_src
 
@@ -357,7 +388,7 @@ early-init.elの領域はここまでなのでフッタを書く
 多分DDSKK使うけどfcitxは手動で止める必要があるっぽいので
 0.02/0.01: たぶんこれなら上手くいく
 when window-system: -nwは別口で止めたいので
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle init.el
   (whenac my/IS_LINUX
           (if (daemonp)
               (add-hook 'server-after-make-frame-hook
@@ -426,8 +457,8 @@ when window-system: -nwは別口で止めたいので
   (which-key-setup-side-window-right-bottom)
   (which-key-mode)
 
-  ;;(require 'delsel)
-  ;;(delete-selection-mode)
+  (require 'delsel)
+  (delete-selection-mode)
 
   (require 'elec-pair)
   (electric-pair-mode)
