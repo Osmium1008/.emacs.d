@@ -6,9 +6,15 @@
 ここのコードを実行すればコンパイルまでされる感じにしておきたい とりあえず出力機構だけ
 #+begin_src emacs-lisp :results file :file config_babel.log :output-dir log/
   (let ((current_dir (file-name-directory (buffer-file-name))))
+    (cd (concat current_dir "plugins/ddskk"))
+    (add-to-list 'load-path (concat current_dir "plugins/ddskk"))
+    (add-to-list 'load-path (concat current_dir "plugins/ddskk/test"))
+    (async-shell-command "/usr/bin/make")
+    (cd current_dir)
     (let ((lisp_dir (concat current_dir "lisp")))
       (unless (file-directory-p lisp_dir) (mkdir lisp_dir)))
-    (org-babel-tangle-file (concat current_dir "custom-azik.org")))
+    (org-babel-tangle-file (concat current_dir "custom-azik.org"))
+    (cd current_dir))
   (org-babel-tangle)
 #+end_src
 
@@ -17,12 +23,13 @@
 
 こっちはバイトコンパイルとか 新環境の方でやってね
 #+begin_src emacs-lisp :results file :file config_compile.log :output-dir log/
-  (defun canc (filename)
-    (byte-compile-file filename)
-    (native-compile-async filename))
   (let ((current_dir (file-name-directory (buffer-file-name))))
     (byte-recompile-directory current_dir 0)
-    (native-compile-async current_dir t t))
+    (native-compile (concat current_dir "init.el"))
+    (native-compile (concat current_dir "early-init.el"))
+    (native-compile (concat current_dir "lisp/custom-azik.el"))
+    (native-compile (concat current_dir "plugins/ef-themes/ef-frost-theme.el"))
+    (cd current_dir))
 #+end_src
 
 #+RESULTS:
@@ -146,8 +153,8 @@ magic-file-name: 処理として重い上に使わないため
 gc-cons-threshold: そんなGCとか必要になる処理挟まないと思うので
 #+begin_src emacs-lisp :tangle early-init.el
   (defconst my/saved-file-name-handler-alist file-name-handler-alist)
-  (setopt file-name-handler-alist nil)
-  (setopt gc-cons-threshold most-positive-fixnum)
+  (setq file-name-handler-alist nil)
+  (setq gc-cons-threshold most-positive-fixnum)
 
 #+end_src
 
@@ -168,30 +175,30 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
 *** suppress custom output
 #+begin_src emacs-lisp :tangle early-init.el
   (with-eval-after-load 'cus-edit
-    (setopt custom-file (eval-when-compile (locate-user-emacs-file "custom.el"))))
+    (setq custom-file (eval-when-compile (locate-user-emacs-file "custom.el"))))
 
 #+end_src
 
 *** options declared in C source code
 雑多な設定を書いていく これはここでいいはず
 #+begin_src emacs-lisp :tangle early-init.el
-  (setopt frame-resize-pixelwise t ; ピクセル単位でウィンドウサイズを変更する
-          enable-recursive-minibuffers t ; 再帰的に小バッファを積めるようにする
-          debug-on-error t ; エラーを吐いた段階でデバッガを起動して情報を出す
-          tab-width 4 ; タブ文字は4空白分として表示する。
-          user-full-name "Suomi Sawano" ; ここで設定できてしまうらしい
-          user-login-name "osmium1008" ; 割といろんなところで使うはずの値
-          display-line-numbers nil ; 行番号を表示しない
-          history-length 1000 ; 履歴サイズ
-          history-delete-duplicates t ; 重複する履歴を消す
-          ring-bell-function 'ignore ; ビープ音を鳴らさないようにする
-          text-quoting-style 'straight ; 素直な引用符遣いを実現する
-          use-dialog-box nil ; yes/noをクリックで選べるようになるらしい いらない
-          scroll-preserve-screen-position t ; 画面外にカーソルが出たら移動させる
-          scroll-conservatively 100 ; C-n やら C-p で画面外に飛び出した時の挙動の設定らしい 1マスずつ
-          truncate-lines t ; 折り返しをさせない
-          use-file-dialog nil ; フォルダをFinderで作らせたりするらしい いらない
-          )
+  (setq frame-resize-pixelwise t ; ピクセル単位でウィンドウサイズを変更する
+        enable-recursive-minibuffers t ; 再帰的に小バッファを積めるようにする
+        debug-on-error t ; エラーを吐いた段階でデバッガを起動して情報を出す
+        tab-width 4 ; タブ文字は4空白分として表示する。
+        user-full-name "Suomi Sawano" ; ここで設定できてしまうらしい
+        user-login-name "osmium1008" ; 割といろんなところで使うはずの値
+        display-line-numbers nil ; 行番号を表示しない
+        history-length 1000 ; 履歴サイズ
+        history-delete-duplicates t ; 重複する履歴を消す
+        ring-bell-function 'ignore ; ビープ音を鳴らさないようにする
+        text-quoting-style 'straight ; 素直な引用符遣いを実現する
+        use-dialog-box nil ; yes/noをクリックで選べるようになるらしい いらない
+        scroll-preserve-screen-position t ; 画面外にカーソルが出たら移動させる
+        scroll-conservatively 100 ; C-n やら C-p で画面外に飛び出した時の挙動の設定らしい 1マスずつ
+        truncate-lines t ; 折り返しをさせない
+        use-file-dialog nil ; フォルダをFinderで作らせたりするらしい いらない
+        )
 
 #+end_src
 
@@ -199,13 +206,13 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
 どこで設定するのかよくわからない とりあえずhookを生成しておく
 #+begin_src emacs-lisp :tangle early-init.el
   (with-eval-after-load 'comp
-    (setopt native-comp-speed 3))
+    (setq native-comp-speed 3))
   (with-eval-after-load 'comp-run
-    (setopt native-comp-async-jobs-number 8
-            native-comp-always-compile t))
+    (setq native-comp-async-jobs-number 8
+          native-comp-always-compile t))
   (with-eval-after-load 'warnings
     ;; native comp の warning を抑える
-    (setopt warning-suppress-types '((comp))))
+    (setq warning-suppress-types '((comp))))
 
 #+end_src
 
@@ -214,7 +221,7 @@ elpacaとか使う場合これを抑制しておかなければならない。
 こちらも ~--batch~ とか ~-q~, ~-Q~ とかでは行われない。
 #+begin_src emacs-lisp :tangle early-init.el
   (with-eval-after-load 'package
-    (setopt package-enable-at-startup nil))
+    (setq package-enable-at-startup nil))
 
 #+end_src
 
@@ -223,7 +230,37 @@ elpacaとか使う場合これを抑制しておかなければならない。
 あまり特筆すべき事柄はない。
 
 ** 9. run ~before-init-hook~
-発火させるらしい 特にここに挟み込む処理もないし放置
+発火させるらしい skkがなにやらここで発火させたい処理があるらしいのでここで読み込んでおく
+いつも通りの設定...のはず posframeはやっぱり入ってないと変換できないっぽい
+#+begin_src emacs-lisp :tangle early-init.el
+  (add-plugin "ddskk")
+  (with-eval-after-load 'skk-vars
+    (require 'custom-azik))
+  (with-eval-after-load 'skk-vars
+    (setq
+     skk-egg-like-newline t
+     skk-server-host "localhost"
+     skk-server-portnum 1178
+     skk-init-file ""
+     skk-byte-compile-init-file nil
+     skk-latin-mode-string "_@"
+     skk-hiragana-mode-string "あ"
+     skk-katakana-mode-string "ア"
+     skk-jisx0208-latin-mode-string "Ａ"
+     skk-abbrev-mode-string "aA"
+     skk-henkan-strict-okuri-precedence t
+     skk-delete-implies-kakutei nil
+     skk-delete-okuri-when-quit t
+     skk-indicator-prefix "SKK:["
+     skk-indicator-suffix-func #'(lambda (mode) "]")
+     skk-use-color-cursor nil
+     skk-indicator-use-cursor-color nil
+     skk-isearch-start-mode 'latin))
+  (require 'skk-autoloads)
+  (setq default-input-method "japanese-skk"
+        skk-preload nil)
+
+#+end_src
 
 ** 10. create graphical frame, 11. set default face and bars
 ~--batch~ とか =daemon= モードだと発火しない。
@@ -232,17 +269,6 @@ default-frame-alistはいろんなところで読み取られるので割と便�
 #+begin_src emacs-lisp :tangle early-init.el
   (add-to-list 'default-frame-alist '(fullscreen . maximized))
   (add-to-list 'default-frame-alist '(font . "UDEV Gothic NFLG-13")) ; set-face-attr より速い
-  (let ((udg (font-spec :family "UDEV Gothic NFLG" :height 130))) ; 書いておかないとフォントバグる
-    (set-fontset-font t 'katakana-jisx0201 udg)
-    (set-fontset-font t 'katakana-sjis udg)
-    (set-fontset-font t 'japanese-jisx0213-a udg)
-    (set-fontset-font t 'latin-jisx0201 udg)
-    (set-fontset-font t 'japanese-jisx0208 udg)
-    (set-fontset-font t 'japanese-jisx0208-1978 udg)
-    (set-fontset-font t 'japanese-jisx0212 udg)
-    (set-fontset-font t 'japanese-jisx0213-1 udg)
-    (set-fontset-font t 'japanese-jisx0213-2 udg)
-    (set-fontset-font t 'japanese-jisx0213.2004-1 udg))
                                           ; mode 関連
   (scroll-bar-mode -1)
   (tool-bar-mode -1)
@@ -345,31 +371,44 @@ when window-system: -nwは別口で止めたいので
 *** settings
 基本的な設定を書いていく がここで設定する値って少なそう
 #+begin_src emacs-lisp :tangle init.el
+  (let ((udg (font-spec :family "UDEV Gothic NFLG" :height 130))) ; 書いておかないとフォントバグる
+    (set-fontset-font t 'katakana-jisx0201 udg)
+    (set-fontset-font t 'katakana-sjis udg)
+    (set-fontset-font t 'japanese-jisx0213-a udg)
+    (set-fontset-font t 'latin-jisx0201 udg)
+    (set-fontset-font t 'japanese-jisx0208 udg)
+    (set-fontset-font t 'japanese-jisx0208-1978 udg)
+    (set-fontset-font t 'japanese-jisx0212 udg)
+    (set-fontset-font t 'japanese-jisx0213-1 udg)
+    (set-fontset-font t 'japanese-jisx0213-2 udg)
+    (set-fontset-font t 'japanese-jisx0213.2004-1 udg))
+
   (global-set-key (kbd "M-ESC ESC") 'keyboard-quit) ; ESC3連打とC-gの挙動を合わせる
-  (setopt user-mail-address "osmium1008@gmail.com")
+  (setq user-mail-address "osmium1008@gmail.com")
 
   (with-eval-after-load 'mwheel
-    (setopt mouse-wheel-scroll-amount '(1 ((control) . 5)) ; マウスホイールの進み方 5マス進めるよ
-            mouse-wheel-tilt-scroll t)) ; 横スクロール
+    (setq mouse-wheel-scroll-amount '(1 ((control) . 5)) ; マウスホイールの進み方 5マス進めるよ
+          mouse-wheel-tilt-scroll t)) ; 横スクロール
 
   (with-eval-after-load 'simple
-    (setopt kill-read-only-ok t
-  	      kill-whole-line t
-  	      indent-tabs-mode nil)) ; setqだとなにかしらのタイミングが合ってない
+    (setq kill-read-only-ok t
+    	kill-whole-line t))
+  (with-eval-after-load 'simple
+    (setopt indent-tabs-mode nil)) ; setqだとなにかしらのタイミングが合ってない
 
-  (setopt tab-always-indent t) ; indent.elはwith-eval-after-loadを発火させない
+  (setq tab-always-indent t) ; indent.elはwith-eval-after-loadを発火させない
 
-  (setopt auto-save-file-name-transforms ; file.elもwith-eval-after-loadを発火させない
-          `((".*" ,(eval-when-compile(locate-user-emacs-file "backup/")) t))
-          backup-directory-alist
-          `((".*" . ,(eval-when-compile(locate-user-emacs-file "backup"))))
-          version-control t
-          delete-old-versions t
-          auto-save-visited-interval 30)
+  (setq auto-save-file-name-transforms ; file.elもwith-eval-after-loadを発火させない
+        `((".*" ,(eval-when-compile(locate-user-emacs-file "backup/")) t))
+        backup-directory-alist
+        `((".*" . ,(eval-when-compile(locate-user-emacs-file "backup"))))
+        version-control t
+        delete-old-versions t
+        auto-save-visited-interval 30)
 
   (with-eval-after-load 'vc-git
     (advice-add 'vc-git-mode-line-string :filter-return
-                (lambda (str) (substring str 4))))
+                (lambda (str) (replace-regexp-in-string "Git." "" str))))
 
   (with-eval-after-load 'mule-cmds
     (prefer-coding-system 'utf-8-unix))
@@ -404,7 +443,7 @@ when window-system: -nwは別口で止めたいので
 いつもの3モードやら ~inhibit-default-init~ が有効化されてた場合行われない。
 一応無効化だけやっておくか...
 #+begin_src emacs-lisp :tangle init.el
-  (setopt inhibit-default-init t)
+  (setq inhibit-default-init t)
 
 #+end_src
 
@@ -426,9 +465,9 @@ major-modeに引っ掛けるhookはここで発動するけど場合によって
 *** org-mode
 #+begin_src emacs-lisp :tangle init.el
   (with-eval-after-load 'org
-    (setopt org-startup-folded 'content))
+    (setq org-startup-folded 'content))
   (add-hook 'org-mode-hook
-            (lambda nil (setopt org-use-speed-commands t)))
+            (lambda nil (setq org-use-speed-commands t)))
 
 #+end_src
 
@@ -471,7 +510,7 @@ default-frame-alistとかが変更されてればここで反映する。
 しないで
 ~--no-splash~ や ~-Q~ でも抑制される 本当に?
 #+begin_src emacs-lisp :tangle init.el
-  (setopt inhibit-startup-screen t)
+  (setq inhibit-startup-screen t)
 
 #+end_src
 
@@ -490,8 +529,8 @@ emacsclientの起動時に発火するものでそちらで起動している場
 
 ** restore while-initialize settings to default
 #+begin_src emacs-lisp :tangle init.el
-  (setopt file-name-handler-alist my/saved-file-name-handler-alist)
-  (setopt gc-cons-threshold (eval-when-compile (* 1024 1024 128)))
+  (setq file-name-handler-alist my/saved-file-name-handler-alist)
+  (setq gc-cons-threshold (eval-when-compile (* 1024 1024 128)))
 
 #+end_src
 
