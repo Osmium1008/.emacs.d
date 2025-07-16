@@ -238,6 +238,15 @@ elpacaとか使う場合これを抑制しておかなければならない。
     (require 'custom-azik))
   (with-eval-after-load 'skk-vars
     (setq
+     skk-user-directory (eval-when-compile (locate-user-emacs-file "ddskk"))
+     skk-jisyo (eval-when-compile (locate-user-emacs-file "ddskk/jisyo"))
+     skk-backup-jisyo (eval-when-compile (locate-user-emacs-file "ddskk/jisyo.bak"))
+     skk-emacs-id-file (eval-when-compile (locate-user-emacs-file "ddskk/emacs-id"))
+     skk-record-file (eval-when-compile (locate-user-emacs-file "ddskk/record"))
+     skk-study-file (eval-when-compile (locate-user-emacs-file "ddskk/study"))
+     skk-study-backup-file (eval-when-compile (locate-user-emacs-file "ddskk/study.bak"))
+     skk-bayesian-history-file (eval-when-compile (locate-user-emacs-file "ddskk/bayesian"))
+     skk-bayesian-corpus-file (eval-when-compile (locate-user-emacs-file "ddskk/corpus"))
      skk-egg-like-newline t
      skk-server-host "localhost"
      skk-server-portnum 1178
