@@ -5,11 +5,11 @@
 * compile
 ここのコードを実行すればコンパイルまでされる感じにしておきたい とりあえず出力機構だけ
 #+begin_src emacs-lisp :results file :file config_babel.log :output-dir log/
-  (org-babel-tangle)
   (let ((current_dir (file-name-directory (buffer-file-name))))
     (let ((lisp_dir (concat current_dir "lisp")))
       (unless (file-directory-p lisp_dir) (mkdir lisp_dir)))
     (org-babel-tangle-file (concat current_dir "custom-azik.org")))
+  (org-babel-tangle)
 #+end_src
 
 #+RESULTS:
@@ -19,18 +19,74 @@
 #+begin_src emacs-lisp :results file :file config_compile.log :output-dir log/
   (defun canc (filename)
     (byte-compile-file filename)
-    (native-compile filename))
+    (native-compile-async filename))
   (let ((current_dir (file-name-directory (buffer-file-name))))
-    (let ((early_init_el (concat current_dir "early-init.el"))
-          (init_el (concat current_dir "init.el"))
-          (custom_azik_el (concat current_dir "lisp/custom-azik.el")))
-      (canc early_init_el)
-      (canc init_el)
-      (canc custom_azik_el)))
+    (byte-recompile-directory current_dir 0)
+    (native-compile-async current_dir t t))
 #+end_src
 
 #+RESULTS:
 [[file:log/config_compile.log]]
+
+* Useful macro
+あれば使えそうなマクロをいくつか定義しておく
+/lispをload-pathに追加してeval-when-compileで各ファイルから呼びだすもの
+** Header
+おまじない
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  ;;; osmium1008-defmacros.el --- useful macros -*- coding: utf-8; lexical-binding: t; -*-
+  ;; Author: Osmium_1008 (osmium1008@gmail.com)
+  ;; Version: 0.1
+
+  ;;; Commentary:
+  ;; パッケージ管理はgit submoduleを使うことになった
+
+  ;;; Code:
+
+#+end_src
+
+** load plugin macro
+パスを通しやすくしておく
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  (defmacro add-plugin (plugin-name)
+    (list 'add-to-list ''load-path
+          (list 'eval-when-compile
+                (list 'locate-user-emacs-file
+                      (list 'concat "plugins/" plugin-name)))))
+
+#+end_src
+
+** wrapper for condition series
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  (defmacro ifac (condition then-form &rest else-form)
+    (declare (indent 2))
+    (if (eval condition) then-form (if (cadr else-form) `(progn ,@else-form) (car else-form))))
+
+  (defmacro whenac (condition &rest body)
+    (declare (indent 1))
+    (when (eval condition) (if (cadr body) `(progn ,@body) (car body))))
+
+  (defmacro unlessac (condition &rest body)
+    (declare (indent 1))
+    (unless (eval condition) (if (cadr body) `(progn ,@body) (car body))))
+
+#+end_src
+
+** OS-distinction
+OSやら起動モードやらを判別できるように
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  (defconst my/IS_MAC (eq system-type 'darwin))
+  (defconst my/IS_LINUX (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix)))
+  (defconst my/IS_WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
+  ;; is in terminal: check window-system == nil
+
+#+end_src
+
+** footer
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  (provide 'osmium1008-defmacros)
+  ;;; osmium1008-defmacros.el ends here
+#+end_src
 
 * Launch routine
 起動順序に合わせた設定を行うべきであるため、読込順序を書きつつ順序に合わせた設定を記述することとする。
@@ -68,45 +124,6 @@
 #+begin_src emacs-lisp
   (require 'profiler)
   (profiler-start 'cpu)
-#+end_src
-
-*** set some while-initialize settings
-magic-file-name: 処理として重い上に使わないため
-gc-cons-threshold: そんなGCとか必要になる処理挟まないと思うので
-#+begin_src emacs-lisp :tangle early-init.el
-  (defconst my/saved-file-name-handler-alist file-name-handler-alist)
-  (setopt file-name-handler-alist nil)
-  (setopt gc-cons-threshold most-positive-fixnum)
-#+end_src
-
-*** OS-distinction
-OSやら起動モードやらを判別できるように
-#+begin_src emacs-lisp :tangle early-init.el
-  (defconst my/IS_MAC (eval-when-compile (eq system-type 'darwin)))
-  (defconst my/IS_LINUX (eval-when-compile (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix))))
-  (defconst my/IS_WINDOWS (eval-when-compile (memq system-type '(cygwin windows-nt ms-dos))))
-  ;; is in terminal: check window-system == nil
-
-#+end_src
-
-*** set library path
-これやっておかないとelnがエラー吐く
-#+begin_src emacs-lisp :tangle early-init.el
-  (if my/IS_MAC
-      (setenv "LIBRARY_PATH"
-              (eval-when-compile (string-join
-                  '("opt/homebrew/opt/gcc/lib/gcc/current"
-                    "/opt/homebrew/opt/libgccjit/lib/gcc/current"
-                    "/opt/homebrew/opt/gcc/lib/gcc/current/gcc/aarch64-apple-darwin24/15")
-                  ":")))
-    nil)
-
-#+end_src
-
-*** suppress custom output
-#+begin_src emacs-lisp :tangle early-init.el
-  (with-eval-after-load 'cus-edit
-    (setopt custom-file (eval-when-compile (locate-user-emacs-file "custom.el"))))
 
 #+end_src
 
@@ -117,26 +134,65 @@ OSやら起動モードやらを判別できるように
 
 #+end_src
 
+*** load macro list
+読み出す
+#+begin_src emacs-lisp :tangle early-init.el
+  (eval-when-compile (require 'osmium1008-defmacros))
+
+#+end_src
+
+*** set some while-initialize settings
+magic-file-name: 処理として重い上に使わないため
+gc-cons-threshold: そんなGCとか必要になる処理挟まないと思うので
+#+begin_src emacs-lisp :tangle early-init.el
+  (defconst my/saved-file-name-handler-alist file-name-handler-alist)
+  (setopt file-name-handler-alist nil)
+  (setopt gc-cons-threshold most-positive-fixnum)
+
+#+end_src
+
+*** set library path
+これやっておかないとelnがエラー吐く
+#+begin_src emacs-lisp :tangle early-init.el
+  (ifac my/IS_MAC
+        (setenv "LIBRARY_PATH"
+                (eval-when-compile (string-join
+                                    '("opt/homebrew/opt/gcc/lib/gcc/current"
+                                      "/opt/homebrew/opt/libgccjit/lib/gcc/current"
+                                      "/opt/homebrew/opt/gcc/lib/gcc/current/gcc/aarch64-apple-darwin24/15")
+                                    ":")))
+        nil)
+
+#+end_src
+
+*** suppress custom output
+#+begin_src emacs-lisp :tangle early-init.el
+  (with-eval-after-load 'cus-edit
+    (setopt custom-file (eval-when-compile (locate-user-emacs-file "custom.el"))))
+
+#+end_src
+
 *** options declared in C source code
 雑多な設定を書いていく これはここでいいはず
 #+begin_src emacs-lisp :tangle early-init.el
   (setopt frame-resize-pixelwise t ; ピクセル単位でウィンドウサイズを変更する
-        enable-recursive-minibuffers t ; 再帰的に小バッファを積めるようにする
-        debug-on-error t ; エラーを吐いた段階でデバッガを起動して情報を出す
-        tab-width 4 ; タブ文字は4空白分として表示する。
-        user-full-name "Suomi Sawano" ; ここで設定できてしまうらしい
-        user-login-name "osmium1008" ; 割といろんなところで使うはずの値
-        display-line-numbers nil ; 行番号を表示しない
-        history-length 1000 ; 履歴サイズ
-        history-delete-duplicates t ; 重複する履歴を消す
-        ring-bell-function 'ignore ; ビープ音を鳴らさないようにする
-        text-quoting-style 'straight ; 素直な引用符遣いを実現する
-        use-dialog-box nil ; yes/noをクリックで選べるようになるらしい いらない
-        scroll-preserve-screen-position t ; 画面外にカーソルが出たら移動させる
-        scroll-conservatively 100 ; C-n やら C-p で画面外に飛び出した時の挙動の設定らしい 1マスずつ
-        truncate-lines t ; 折り返しをさせない
-        use-file-dialog nil ; フォルダをFinderで作らせたりするらしい いらない
-        )
+          enable-recursive-minibuffers t ; 再帰的に小バッファを積めるようにする
+          debug-on-error t ; エラーを吐いた段階でデバッガを起動して情報を出す
+          tab-width 4 ; タブ文字は4空白分として表示する。
+          user-full-name "Suomi Sawano" ; ここで設定できてしまうらしい
+          user-login-name "osmium1008" ; 割といろんなところで使うはずの値
+          display-line-numbers nil ; 行番号を表示しない
+          history-length 1000 ; 履歴サイズ
+          history-delete-duplicates t ; 重複する履歴を消す
+          ring-bell-function 'ignore ; ビープ音を鳴らさないようにする
+          text-quoting-style 'straight ; 素直な引用符遣いを実現する
+          use-dialog-box nil ; yes/noをクリックで選べるようになるらしい いらない
+          scroll-preserve-screen-position t ; 画面外にカーソルが出たら移動させる
+          scroll-conservatively 100 ; C-n やら C-p で画面外に飛び出した時の挙動の設定らしい 1マスずつ
+          truncate-lines t ; 折り返しをさせない
+          use-file-dialog nil ; フォルダをFinderで作らせたりするらしい いらない
+          )
+
 #+end_src
 
 *** native compile options
@@ -146,7 +202,7 @@ OSやら起動モードやらを判別できるように
     (setopt native-comp-speed 3))
   (with-eval-after-load 'comp-run
     (setopt native-comp-async-jobs-number 8
-          native-comp-always-compile t))
+            native-comp-always-compile t))
   (with-eval-after-load 'warnings
     ;; native comp の warning を抑える
     (setopt warning-suppress-types '((comp))))
@@ -187,17 +243,32 @@ default-frame-alistはいろんなところで読み取られるので割と便�
     (set-fontset-font t 'japanese-jisx0213-1 udg)
     (set-fontset-font t 'japanese-jisx0213-2 udg)
     (set-fontset-font t 'japanese-jisx0213.2004-1 udg))
+                                          ; mode 関連
   (scroll-bar-mode -1)
   (tool-bar-mode -1)
   (blink-cursor-mode -1)
-  (if my/IS_MAC
-      (with-eval-after-load 'menu-bar
-        (if (daemonp)
-            (add-hook 'server-after-make-frame-hook
-                      (lambda nil (menu-bar-mode -1)))
-          (add-hook 'after-init-hook ;; load直後だとなんか上手く行かなかった。
-                    (lambda nil (menu-bar-mode -1)))))
-    (menu-bar-mode -1))
+  (ifac my/IS_MAC
+        (with-eval-after-load 'menu-bar
+          (if (daemonp)
+              (add-hook 'server-after-make-frame-hook
+                        (lambda nil (menu-bar-mode -1)))
+            (add-hook 'after-init-hook ;; load直後だとなんか上手く行かなかった。
+                      (lambda nil (menu-bar-mode -1)))))
+        (menu-bar-mode -1))
+                                          ; load theme & vc-edited-state の初回埋め込み
+  (eval-and-compile
+    (add-plugin "ef-themes")
+    (require 'ef-themes)
+    (ef-themes-select 'ef-frost))
+  (with-eval-after-load 'vc-hooks
+    (custom-set-faces
+     `(vc-edited-state
+       ((t :foreground ,(eval-when-compile (ef-themes-get-color-value 'blue-cooler)) :inherit bold)))))
+  (add-hook 'ef-themes-post-load-hook
+            (lambda nil
+              (custom-set-faces
+               `(vc-edited-state
+                 ((t :foreground ,(ef-themes-get-color-value 'blue-cooler) :inherit bold))))))
 
 #+end_src
 
@@ -224,9 +295,15 @@ early-init.elの領域はここまでなのでフッタを書く
   ;; Version: 0.1
 
   ;;; Commentary:
-  ;; el-getあたり使うかな 何使うか決めてない
+  ;; パッケージ管理はgit submoduleを使うことになった
 
   ;;; Code:
+
+#+end_src
+
+*** load macro list
+#+begin_src emacs-lisp :tangle init.el
+  (eval-when-compile (require 'osmium1008-defmacros))
 
 #+end_src
 
@@ -238,6 +315,7 @@ early-init.elの領域はここまでなのでフッタを書く
     (replace-regexp-in-string
      "\n" " " (replace-regexp-in-string
                "^.*/\\(.*\\.\\(elc\\|el\\)\\).*$" "\\1" (replace-regexp-in-string " (\"" "\n(\"" (prin1-to-string load-history)))))
+
 #+end_src
 
 *** disable IME
@@ -245,40 +323,23 @@ early-init.elの領域はここまでなのでフッタを書く
 0.02/0.01: たぶんこれなら上手くいく
 when window-system: -nwは別口で止めたいので
 #+begin_src emacs-lisp
-  (when my/IS_LINUX
-    (if (daemonp)
-        (add-hook 'server-after-make-frame-hook
-                  (lambda nil
-                    (when window-system
-                     (sleep-for 0.02)
-                     (make-process
-                      :name "fcitx5-remote"
-                      :command '("fcitx5-remote" "-s" "keyboard-us")))))
-      (when window-system
-        (add-hook 'after-init-hook
-                  (lambda nil
-                    (sleep-for 0.01)
-                    (make-process
-                     :name "fcitx5-remote"
-                     :command '("fcitx5-remote" "-s" "keyboard-us")))))))
-#+end_src
+  (whenac my/IS_LINUX
+          (if (daemonp)
+              (add-hook 'server-after-make-frame-hook
+                        (lambda nil
+                          (when window-system
+                            (sleep-for 0.02)
+                            (make-process
+                             :name "fcitx5-remote"
+                             :command '("fcitx5-remote" "-s" "keyboard-us")))))
+            (when window-system
+              (add-hook 'after-init-hook
+                        (lambda nil
+                          (sleep-for 0.01)
+                          (make-process
+                           :name "fcitx5-remote"
+                           :command '("fcitx5-remote" "-s" "keyboard-us")))))))
 
-*** define macro for load plugins
-#+begin_src emacs-lisp :tangle init.el
-  (eval-when-compile
-    (defmacro add-plugin (plugin-name)
-      (list 'add-to-list ''load-path
-            (list 'eval-when-compile
-                  (list 'locate-user-emacs-file
-                        (list 'concat "plugins/" plugin-name))))))
-#+end_src
-
-*** load theme
-ef-themesよりef-frostを使う 見た目がとてもよいので
-#+begin_src emacs-lisp :tangle init.el
-  (add-plugin "ef-themes")
-  (require 'ef-themes)
-  (ef-themes-select 'ef-frost)
 #+end_src
 
 *** settings
@@ -289,22 +350,22 @@ ef-themesよりef-frostを使う 見た目がとてもよいので
 
   (with-eval-after-load 'mwheel
     (setopt mouse-wheel-scroll-amount '(1 ((control) . 5)) ; マウスホイールの進み方 5マス進めるよ
-          mouse-wheel-tilt-scroll t)) ; 横スクロール
+            mouse-wheel-tilt-scroll t)) ; 横スクロール
 
   (with-eval-after-load 'simple
     (setopt kill-read-only-ok t
-  	  kill-whole-line t
-  	  indent-tabs-mode nil)) ; setqだとなにかしらのタイミングが合ってない
+  	      kill-whole-line t
+  	      indent-tabs-mode nil)) ; setqだとなにかしらのタイミングが合ってない
 
   (setopt tab-always-indent t) ; indent.elはwith-eval-after-loadを発火させない
 
   (setopt auto-save-file-name-transforms ; file.elもwith-eval-after-loadを発火させない
-        `((".*" ,(eval-when-compile(locate-user-emacs-file "backup/")) t))
-        backup-directory-alist
-        `((".*" . ,(eval-when-compile(locate-user-emacs-file "backup"))))
-        version-control t
-        delete-old-versions t
-        auto-save-visited-interval 30)
+          `((".*" ,(eval-when-compile(locate-user-emacs-file "backup/")) t))
+          backup-directory-alist
+          `((".*" . ,(eval-when-compile(locate-user-emacs-file "backup"))))
+          version-control t
+          delete-old-versions t
+          auto-save-visited-interval 30)
 
   (with-eval-after-load 'vc-git
     (advice-add 'vc-git-mode-line-string :filter-return
@@ -368,6 +429,7 @@ major-modeに引っ掛けるhookはここで発動するけど場合によって
     (setopt org-startup-folded 'content))
   (add-hook 'org-mode-hook
             (lambda nil (setopt org-use-speed-commands t)))
+
 #+end_src
 
 ** 20. run tty-setup-hook
@@ -430,6 +492,7 @@ emacsclientの起動時に発火するものでそちらで起動している場
 #+begin_src emacs-lisp :tangle init.el
   (setopt file-name-handler-alist my/saved-file-name-handler-alist)
   (setopt gc-cons-threshold (eval-when-compile (* 1024 1024 128)))
+
 #+end_src
 
 ** init.el footer
