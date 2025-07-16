@@ -1,3 +1,6 @@
 [submodule "plugins/ef-themes"]
 	path = plugins/ef-themes
 	url = git@github.com:protesilaos/ef-themes
+[submodule "plugins/ddskk"]
+	path = plugins/ddskk
+	url = git@github.com:skk-dev/ddskk
