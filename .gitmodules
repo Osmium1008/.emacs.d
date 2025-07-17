@@ -10,3 +10,6 @@
 [submodule "plugins/posframe"]
 	path = plugins/posframe
 	url = git@github.com:tumashu/posframe
+[submodule "plugins/moody"]
+	path = plugins/moody
+	url = git@github.com:tarsius:moody
