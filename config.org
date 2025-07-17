@@ -28,6 +28,7 @@
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/tut-code"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/nicola"))
     (add-to-list 'load-path (concat current_dir "plugins/posframe"))
+    (add-to-list 'load-path (concat current_dir "plugins/mistty"))
     (native-compile-async (concat current_dir "init.el"))
     (native-compile-async (concat current_dir "early-init.el"))
     (native-compile-async (concat current_dir "lisp/custom-azik.el"))
@@ -533,6 +534,29 @@ when window-system: -nwは別口で止めたいので
   (moody-replace-mode-line-front-space)
   (moody-replace-mode-line-buffer-identification)
   (moody-replace-vc-mode)
+  
+#+end_src
+
+*** set path
+少し時間食う処理っぽいので遅延させた方がよいかもしれない
+#+begin_src emacs-lisp :tangle init.el
+  (eval-and-compile (add-plugin "exec-path-from-shell"))
+  (eval-when-compile (require 'exec-path-from-shell))
+  (with-eval-after-load 'exec-path-from-shell
+    (exec-path-from-shell-initialize))
+
+  (whenac (or my/IS_LINUX my/IS_MAC)
+          (when (or window-system (daemonp))
+            (add-hook 'emacs-startup-hook (lambda nil (require 'exec-path-from-shell)))))
+
+#+end_src
+
+*** mistty
+一応autoloadだけ引っ掛けておく
+#+begin_src emacs-lisp :tangle init.el
+  (add-plugin "mistty")
+  (autoload 'mistty "mistty" nil t)
+
 #+end_src
 
 ** 15. load default.el

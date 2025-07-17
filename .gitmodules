@@ -13,3 +13,9 @@
 [submodule "plugins/moody"]
 	path = plugins/moody
 	url = git@github.com:tarsius:moody
+[submodule "plugins/mistty"]
+	path = plugins/mistty
+	url = git@github.com:szermatt/mistty
+[submodule "plugins/exec-path-from-shell"]
+	path = plugins/exec-path-from-shell
+	url = git@github.com:purcell/exec-path-from-shell
