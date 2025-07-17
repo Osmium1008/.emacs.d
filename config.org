@@ -26,10 +26,7 @@
 #+begin_src emacs-lisp :results file :file config_compile.log :output-dir log/
   (let ((current_dir (file-name-directory (buffer-file-name))))
     (byte-recompile-directory current_dir 0 t)
-    (native-compile (concat current_dir "init.el"))
-    (native-compile (concat current_dir "early-init.el"))
-    (native-compile (concat current_dir "lisp/custom-azik.el"))
-    (native-compile (concat current_dir "plugins/ef-themes/ef-frost-theme.el"))
+    (native-compile-async current_dir t t)
     (cd current_dir))
 #+end_src
 
@@ -267,7 +264,12 @@ elpacaとか使う場合これを抑制しておかなければならない。
      skk-use-color-cursor nil ; 色は固定 モードぐらい脳が覚えてる...はず
      skk-indicator-use-cursor-color nil ; 同じく
      skk-use-face t ; どうせフルカラー環境で使うので...
+     skk-henkan-face 'face-for-skk-henkan ; あとで定義する
      skk-isearch-start-mode 'latin)) ; そもそもisearchはあまり使わなくなる気もするが...
+  (with-eval-after-load 'skk-vars
+    (custom-set-faces
+     '(skk-prefix-hiragana-face ((t :inherit underline)))
+     '(skk-prefix-katakana-face ((t :inherit underline)))))
   (require 'skk-autoloads)
   (setq default-input-method "japanese-skk"
         skk-preload nil)
@@ -276,7 +278,9 @@ elpacaとか使う場合これを抑制しておかなければならない。
   (add-plugin "ddskk-posframe")
   (add-hook 'skk-mode-hook
             (lambda nil
-              (require 'ddskk-posframe)))
+              (if window-system
+                  (require 'ddskk-posframe)
+                (setq skk-show-inline t))))
   (with-eval-after-load 'ddskk-posframe
     (ddskk-posframe-mode t))
   (with-eval-after-load 'ddskk-posframe
@@ -311,13 +315,13 @@ default-frame-alistはいろんなところで読み取られるので割と便�
   (with-eval-after-load 'vc-hooks
     (custom-set-faces
      `(vc-edited-state
-       ((t :foreground ,(eval-when-compile (ef-themes-get-color-value 'blue-cooler)) :inherit bold)))))
+       ((t :foreground ,(eval-when-compile (ef-themes-get-color-value 'accent-3)) :inherit bold)))))
   (with-eval-after-load 'vc-hooks
     (add-hook 'ef-themes-post-load-hook
               (lambda nil
                 (custom-set-faces
                  `(vc-edited-state
-                   ((t :foreground ,(ef-themes-get-color-value 'blue-cooler) :inherit bold)))))))
+                   ((t :foreground ,(ef-themes-get-color-value 'accent-3) :inherit bold)))))))
   (with-eval-after-load 'ddskk-posframe ; グレーっぽい候補ウィンドウを出してくれる しかもいい感じにそれぞれのテーマの色に追従してくれる
     (custom-set-faces
      `(ddskk-posframe ((t
@@ -335,6 +339,20 @@ default-frame-alistはいろんなところで読み取られるので割と便�
                                     :background ,(ef-themes-get-color-value 'bg-dim)
                                     )))
                  `(ddskk-posframe-border ((t :background ,(ef-themes-get-color-value 'bg-alt))))))))
+  (with-eval-after-load 'skk-vars
+    (progn
+      (setq skk-inline-show-background-color (eval-when-compile (ef-themes-get-color-value 'bg-main)))
+      (defface
+        face-for-skk-henkan
+        `((t :foreground ,(eval-when-compile (ef-themes-get-color-value 'fg-alt))))
+        "変換中の文字の表示に関するface"
+        :group 'skk-visual)
+      (add-hook 'ef-themes-post-load-hook
+                (lambda nil
+                  (setq
+                   skk-inline-show-background-color (ef-themes-get-color-value 'bg-main))
+                  (custom-set-faces `(face-for-skk-henkan
+                                      ((t :foreground ,(ef-themes-get-color-value 'fg-alt)))))))))
 
 #+end_src
 
