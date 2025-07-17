@@ -257,16 +257,16 @@ elpacaとか使う場合これを抑制しておかなければならない。
     (require 'custom-azik))
   (with-eval-after-load 'skk-vars
     (setq
-     skk-user-directory (eval-when-compile (locate-user-emacs-file "ddskk"))
+     skk-user-directory (eval-when-compile (expand-file-name "~/.ddskk"))
                                           ; 結局それぞれについて設定しないと動かないことに気付いた これいるのかな...
-     skk-jisyo (eval-when-compile (locate-user-emacs-file "ddskk/jisyo"))
-     skk-backup-jisyo (eval-when-compile (locate-user-emacs-file "ddskk/jisyo.bak"))
-     skk-emacs-id-file (eval-when-compile (locate-user-emacs-file "ddskk/emacs-id"))
-     skk-record-file (eval-when-compile (locate-user-emacs-file "ddskk/record"))
-     skk-study-file (eval-when-compile (locate-user-emacs-file "ddskk/study"))
-     skk-study-backup-file (eval-when-compile (locate-user-emacs-file "ddskk/study.bak"))
-     skk-bayesian-history-file (eval-when-compile (locate-user-emacs-file "ddskk/bayesian"))
-     skk-bayesian-corpus-file (eval-when-compile (locate-user-emacs-file "ddskk/corpus"))
+     skk-jisyo (eval-when-compile (expand-file-name "~/.ddskk/jisyo"))
+     skk-backup-jisyo (eval-when-compile (expand-file-name "~/.ddskk/jisyo.bak"))
+     skk-emacs-id-file (eval-when-compile (expand-file-name "~/.ddskk/emacs-id"))
+     skk-record-file (eval-when-compile (expand-file-name "~/.ddskk/record"))
+     skk-study-file (eval-when-compile (expand-file-name "~/.ddskk/study"))
+     skk-study-backup-file (eval-when-compile (expand-file-name "~/.ddskk/study.bak"))
+     skk-bayesian-history-file (eval-when-compile (expand-file-name "~/.ddskk/bayesian"))
+     skk-bayesian-corpus-file (eval-when-compile (expand-file-name "~/.ddskk/corpus"))
      skk-egg-like-newline t ; 確定時に改行文字を入力しない
      skk-server-host "localhost" ; skk-serverを使用する
      skk-server-portnum 1178 ; skk-serverを使用する
