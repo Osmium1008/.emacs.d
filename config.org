@@ -48,6 +48,7 @@
     (native-compile-async (concat current_dir "plugins/ddskk/skk-version.el"))
     (native-compile-async (concat current_dir "plugins/posframe/posframe.el"))
     (native-compile-async (concat current_dir "plugins/ddskk-posframe/ddskk-posframe.el"))
+    (native-compile-async (concat current_dir "plugins/moody/moody.el"))
     (cd current_dir))
 #+end_src
 
@@ -252,7 +253,11 @@ elpacaとか使う場合これを抑制しておかなければならない。
 いつも通りの設定...のはず posframeはやっぱり入ってないと変換できないっぽい
 ついでにddskk-posframe君も読み込んでおく
 #+begin_src emacs-lisp :tangle early-init.el
-  (add-plugin "ddskk")
+  (eval-and-compile
+    (add-plugin "ddskk"))
+  (eval-when-compile
+    (require 'skk)
+    (require 'skk-vars))
   (with-eval-after-load 'skk-vars
     (require 'custom-azik))
   (with-eval-after-load 'skk-vars
@@ -281,7 +286,7 @@ elpacaとか使う場合これを抑制しておかなければならない。
      skk-delete-implies-kakutei nil ; 削除入力をしたときに確定してから削除する...のかな? 使わないからわからん
      skk-delete-okuri-when-quit t ; 送り仮名入力をやめたときに送り仮名を残さない
      skk-indicator-prefix "SKK:[" ; それっぽいインジケータ
-     skk-indicator-suffix-func #'(lambda (mode) "]")
+     skk-indicator-suffix-func #'(lambda (mode) "]:")
      skk-use-color-cursor nil ; 色は固定 モードぐらい脳が覚えてる...はず
      skk-indicator-use-cursor-color nil ; 同じく
      skk-use-face t ; どうせフルカラー環境で使うので...
@@ -295,8 +300,9 @@ elpacaとか使う場合これを抑制しておかなければならない。
   (setq default-input-method "japanese-skk"
         skk-preload nil)
   ;; ddskk-posframe: 見慣れたポップアップでの補完ウィンドウを出してくれる
-  (add-plugin "posframe")
-  (add-plugin "ddskk-posframe")
+  (eval-and-compile
+    (add-plugin "posframe")
+    (add-plugin "ddskk-posframe"))
   (add-hook 'skk-mode-hook
             (lambda nil
               (if window-system
@@ -517,6 +523,16 @@ when window-system: -nwは別口で止めたいので
                 (require 'autorevert))
               (global-auto-revert-mode t)))
 
+#+end_src
+
+*** moody
+#+begin_src emacs-lisp :tangle init.el
+  (eval-and-compile
+    (add-plugin "moody")
+    (require 'moody))
+  (moody-replace-mode-line-front-space)
+  (moody-replace-mode-line-buffer-identification)
+  (moody-replace-vc-mode)
 #+end_src
 
 ** 15. load default.el
