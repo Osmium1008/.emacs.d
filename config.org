@@ -24,6 +24,7 @@
 #+begin_src emacs-lisp :results file :file config_compile.log :output-dir log/
   (let ((current_dir (file-name-directory (buffer-file-name))))
     (byte-recompile-directory current_dir 0 t)
+    (delete-file (concat current_dir "lisp/osmium1008-defmacros.elc")) ;; コンパイル時などにキャッシュされているべきでないため
     (add-to-list 'load-path (concat current_dir "plugins/ddskk"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/tut-code"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/nicola"))
@@ -84,7 +85,8 @@
 
 #+end_src
 
-** wrapper for condition series
+** wrapper for conditionals
+実行時評価をしたいもの用
 #+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
   (defmacro ifac (condition then-form &rest else-form)
     (declare (indent 2))
@@ -97,6 +99,34 @@
   (defmacro unlessac (condition &rest body)
     (declare (indent 1))
     (unless (eval condition) (if (cadr body) `(progn ,@body) (car body))))
+
+#+end_src
+
+** wrapper for list evaluation
+実行時に各要素について適用する呼び出しへと展開されるもの
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  (defmacro foreach (list &rest func)
+    (declare (indent 1))
+    (let ((list-evaluated (eval list)))
+      (if (or (cadr list-evaluated) (cadr func))
+          `(progn
+             ,@(mapcan
+                (lambda (elm)
+                  (mapcar
+                   (lambda (func)
+                     (macroexpand-all
+                      func
+                      `((,'\, . (lambda (&rest body) `',(funcall `(lambda (it) ,@body) ',elm))))))
+                   func))
+                list-evaluated))
+        (macroexpand-all
+         (car func)
+         `((,'\, . (lambda (&rest body) `',(funcall `(lambda (it) ,@body) ',(car list-evaluated)))))))))
+
+  (defmacro autoloads (list-functions file &optional desc int type)
+    `(foreach
+         ,list-functions
+       ,(list 'autoload ',it file desc int type)))
 
 #+end_src
 
@@ -182,14 +212,13 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
 *** set library path
 これやっておかないとelnがエラー吐く
 #+begin_src emacs-lisp :tangle early-init.el
-  (ifac my/IS_MAC
-        (setenv "LIBRARY_PATH"
-                (eval-when-compile (string-join
-                                    '("opt/homebrew/opt/gcc/lib/gcc/current"
-                                      "/opt/homebrew/opt/libgccjit/lib/gcc/current"
-                                      "/opt/homebrew/opt/gcc/lib/gcc/current/gcc/aarch64-apple-darwin24/15")
-                                    ":")))
-        nil)
+  (whenac my/IS_MAC
+    (setenv "LIBRARY_PATH"
+            (eval-when-compile (string-join
+                                '("opt/homebrew/opt/gcc/lib/gcc/current"
+                                  "/opt/homebrew/opt/libgccjit/lib/gcc/current"
+                                  "/opt/homebrew/opt/gcc/lib/gcc/current/gcc/aarch64-apple-darwin24/15")
+                                ":"))))
 
 #+end_src
 
@@ -225,6 +254,10 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
 *** native compile options
 どこで設定するのかよくわからない とりあえずhookを生成しておく
 #+begin_src emacs-lisp :tangle early-init.el
+  (eval-when-compile
+    (require 'comp)
+    (require 'comp-run)
+    (require 'warnings))
   (with-eval-after-load 'comp
     (setq native-comp-speed 3))
   (with-eval-after-load 'comp-run
@@ -250,9 +283,9 @@ elpacaとか使う場合これを抑制しておかなければならない。
 あまり特筆すべき事柄はない。
 
 ** 9. run ~before-init-hook~
-発火させるらしい skkがなにやらここで発火させたい処理があるらしいのでここで読み込んでおく
-いつも通りの設定...のはず posframeはやっぱり入ってないと変換できないっぽい
-ついでにddskk-posframe君も読み込んでおく
+発火させるらしい
+*** ddskk
+日本語変換プラグイン もはやいつもの
 #+begin_src emacs-lisp :tangle early-init.el
   (eval-and-compile
     (add-plugin "ddskk"))
@@ -300,18 +333,23 @@ elpacaとか使う場合これを抑制しておかなければならない。
   (require 'skk-autoloads)
   (setq default-input-method "japanese-skk"
         skk-preload nil)
+
+#+end_src
+*** ddskk-posframe
+ddskkに変換候補ウィンドウを出してくれる 見た目がよくなる
+ついでに ~autoloads~ はこう使うもの
+#+begin_src emacs-lisp :tangle early-init.el
   ;; ddskk-posframe: 見慣れたポップアップでの補完ウィンドウを出してくれる
   (eval-and-compile
     (add-plugin "posframe")
     (add-plugin "ddskk-posframe"))
+  (eval-when-compile (require 'ddskk-posframe))
+  (autoloads '(ddskk-posframe-mode) "ddskk-posframe")
   (add-hook 'skk-mode-hook
             (lambda nil
               (if window-system
-                  (require 'ddskk-posframe)
+                  (ddskk-posframe-mode t)
                 (setq skk-show-inline t))))
-  (eval-when-compile (require 'ddskk-posframe))
-  (with-eval-after-load 'ddskk-posframe
-    (ddskk-posframe-mode t))
   (with-eval-after-load 'ddskk-posframe
     (setq ddskk-posframe-border-width 2))
 
@@ -329,13 +367,13 @@ default-frame-alistはいろんなところで読み取られるので割と便�
   (tool-bar-mode -1)
   (blink-cursor-mode -1)
   (ifac my/IS_MAC
-        (with-eval-after-load 'menu-bar
-          (if (daemonp)
-              (add-hook 'server-after-make-frame-hook
-                        (lambda nil (menu-bar-mode -1)))
-            (add-hook 'after-init-hook ;; load直後だとなんか上手く行かなかった。
-                      (lambda nil (menu-bar-mode -1)))))
-        (menu-bar-mode -1))
+      (with-eval-after-load 'menu-bar
+        (if (daemonp)
+            (add-hook 'server-after-make-frame-hook
+                      (lambda nil (menu-bar-mode -1)))
+          (add-hook 'after-init-hook ;; load直後だとなんか上手く行かなかった。
+                    (lambda nil (menu-bar-mode -1)))))
+    (menu-bar-mode -1))
                                           ; load theme & vc-edited-state の初回埋め込み
   (eval-and-compile
     (add-plugin "ef-themes")
@@ -437,21 +475,21 @@ early-init.elの領域はここまでなのでフッタを書く
 when window-system: -nwは別口で止めたいので
 #+begin_src emacs-lisp :tangle init.el
   (whenac my/IS_LINUX
-          (if (daemonp)
-              (add-hook 'server-after-make-frame-hook
-                        (lambda nil
-                          (when window-system
-                            (sleep-for 0.02)
-                            (make-process
-                             :name "fcitx5-remote"
-                             :command '("fcitx5-remote" "-s" "keyboard-us")))))
-            (when window-system
-              (add-hook 'after-init-hook
-                        (lambda nil
-                          (sleep-for 0.01)
-                          (make-process
-                           :name "fcitx5-remote"
-                           :command '("fcitx5-remote" "-s" "keyboard-us")))))))
+    (if (daemonp)
+        (add-hook 'server-after-make-frame-hook
+                  (lambda nil
+                    (when window-system
+                      (sleep-for 0.02)
+                      (make-process
+                       :name "fcitx5-remote"
+                       :command '("fcitx5-remote" "-s" "keyboard-us")))))
+      (when window-system
+        (add-hook 'after-init-hook
+                  (lambda nil
+                    (sleep-for 0.01)
+                    (make-process
+                     :name "fcitx5-remote"
+                     :command '("fcitx5-remote" "-s" "keyboard-us")))))))
 
 #+end_src
 
@@ -516,14 +554,6 @@ when window-system: -nwは別口で止めたいので
   (require 'paren)
   (show-paren-mode)
 
-  (defvar my/is-autorevert-loaded nil)
-  (add-hook 'find-file-hook ; なにかファイルを開いたら有効化する
-            (lambda nil
-              (unless my/is-autorevert-loaded
-                (setq my/is-autorevert-loaded t)
-                (require 'autorevert))
-              (global-auto-revert-mode t)))
-
 #+end_src
 
 *** moody
@@ -534,20 +564,18 @@ when window-system: -nwは別口で止めたいので
   (moody-replace-mode-line-front-space)
   (moody-replace-mode-line-buffer-identification)
   (moody-replace-vc-mode)
-  
+
 #+end_src
 
 *** set path
 少し時間食う処理っぽいので遅延させた方がよいかもしれない
 #+begin_src emacs-lisp :tangle init.el
   (eval-and-compile (add-plugin "exec-path-from-shell"))
-  (eval-when-compile (require 'exec-path-from-shell))
-  (with-eval-after-load 'exec-path-from-shell
-    (exec-path-from-shell-initialize))
+  (autoloads '(exec-path-from-shell-initialize) "exec-path-from-shell" nil t)
 
   (whenac (or my/IS_LINUX my/IS_MAC)
-          (when (or window-system (daemonp))
-            (add-hook 'emacs-startup-hook (lambda nil (require 'exec-path-from-shell)))))
+    (when (or window-system (daemonp))
+      (add-hook 'emacs-startup-hook #'exec-path-from-shell-initialize)))
 
 #+end_src
 
@@ -646,6 +674,38 @@ emacsclientの起動時に発火するものでそちらで起動している場
 
 ** extra. with-eval-after-load
 対象パッケージが読み込まれ次第発火するhook まあ適当に使うといい
+
+** extra find-file-hook
+ファイルが読み込まれたらどうこうできる
+*** autorevert
+ファイルが読み込まれていない限り無用の長物なのでここで設定する。
+#+begin_src emacs-lisp :tangle init.el
+  (eval-and-compile
+    (defvar my/is-autorevert-loaded nil))
+  (autoload 'global-auto-revert-mode "autorevert")
+  (add-hook 'find-file-hook ; なにかファイルを開いたら有効化する
+            (lambda nil
+              (unless my/is-autorevert-loaded
+                (setq my/is-autorevert-loaded t)
+                (global-auto-revert-mode t))))
+
+#+end_src
+
+*** config.org
+このファイルを編集する時にはマクロ集が読み込まれてないとインデントがおかしいことになるので読み込んでおく
+#+begin_src emacs-lisp :tangle init.el
+  (eval-and-compile
+    (defvar my/is-macros-loaded nil))
+  (add-hook 'find-file-hook
+            (lambda nil
+              (when (and (not my/is-macros-loaded)
+                         (eq
+                          (intern (expand-file-name buffer-file-truename))
+                          (eval-when-compile (intern (expand-file-name (locate-user-emacs-file "config.org"))))))
+                (setq my/is-macros-loaded t)
+                (require 'osmium1008-defmacros))))
+
+#+end_src
 
 ** restore while-initialize settings to default
 #+begin_src emacs-lisp :tangle init.el
