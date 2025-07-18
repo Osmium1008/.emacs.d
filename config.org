@@ -78,10 +78,20 @@
 パスを通しやすくしておく
 #+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
   (defmacro add-plugin (plugin-name)
-    (list 'add-to-list ''load-path
-          (list 'eval-when-compile
-                (list 'locate-user-emacs-file
-                      (list 'concat "plugins/" plugin-name)))))
+    `(add-to-list 'load-path
+          (eval-when-compile
+                (locate-user-emacs-file
+                      (concat "plugins/" ,plugin-name)))))
+
+#+end_src
+
+** define anaphoric-wrapper macro
+自動展開機構とかも作っておくべきかも setup-static.elみたいな
+#+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
+  (defmacro my/wrapper (&rest body)
+    "Use in my other macros, this macro expand BODY to the expression almost same to BODY but replace ~it~ with macro-specific value.
+  If you use this macro without other macros, ~it~ will be replaced with ~'dummy~."
+    (funcall `(lambda (it) ,@body) 'dummy))
 
 #+end_src
 
@@ -116,17 +126,17 @@
                    (lambda (func)
                      (macroexpand-all
                       func
-                      `((,'\, . (lambda (&rest body) `',(funcall `(lambda (it) ,@body) ',elm))))))
+                      `((my/wrapper . (lambda (&rest body) `',(funcall `(lambda (it) ,@body) ',elm))))))
                    func))
                 list-evaluated))
         (macroexpand-all
          (car func)
-         `((,'\, . (lambda (&rest body) `',(funcall `(lambda (it) ,@body) ',(car list-evaluated)))))))))
+         `((my/wrapper . (lambda (&rest body) `',(funcall `(lambda (it) ,@body) ',(car list-evaluated)))))))))
 
   (defmacro autoloads (list-functions file &optional desc int type)
     `(foreach
          ,list-functions
-       ,(list 'autoload ',it file desc int type)))
+       (autoload (my/wrapper it) ,file ,desc ,int ,type)))
 
 #+end_src
 
