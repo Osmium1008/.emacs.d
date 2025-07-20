@@ -1,6 +1,6 @@
 * MIT License
 
-Copyright © 2024 Osmium_1008
+Copyright © 2025 Osmium_1008
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,3 @@ SOFTWARE.
 ---
 
 MITライセンス 日本語訳(参考) : [[https://licenses.opensource.jp/MIT/MIT.html]]
-
----
-
-リポジトリ内のファイル/コード片にはいくつか追加のライセンスが適用される箇所があります。詳しくは各ファイルをご参照ください。
