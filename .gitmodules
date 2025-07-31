@@ -28,3 +28,9 @@
 [submodule "plugins/embark"]
 	path = plugins/embark
 	url = https://github.com/oantolin/embark
+[submodule "plugins/consult"]
+	path = plugins/consult
+	url = https://github.com/minad/consult.git
+[submodule "plugins/affe"]
+	path = plugins/affe
+	url = https://github.com/minad/affe.git

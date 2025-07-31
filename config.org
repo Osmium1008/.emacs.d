@@ -615,8 +615,8 @@ when window-system: -nwは別口で止めたいので
   (with-eval-after-load 'embark
     (marginalia-mode t))
 
-  (global-set-key (kbd "s-e") 'embark-act)
-  (global-set-key (kbd "C-h B") 'embark-bindings)
+  (keymap-global-set "s-e" 'embark-act)
+  (keymap-global-set "C-h B" 'embark-bindings)
 
 #+end_src
 
@@ -644,6 +644,46 @@ when window-system: -nwは別口で止めたいので
               (require 'orderless)
               (setq-local orderless-matching-styles '(orderless-prefixes orderless-literal-prefix))
               (setq-local completion-styles '(orderless basic))) t)
+
+#+end_src
+
+*** consult
+補完候補生成器
+#+begin_src emacs-lisp :tangle init.el
+  (add-plugin "consult")
+  (autoloads '(consult-buffer consult-line consult-goto-line consult-outline consult-mark consult-imenu consult-imenu-multi consult-compile-error) "consult" nil t)
+  (keymap-global-set "C-s" 'consult-line)
+  (keymap-global-set "M-s b" 'consult-buffer)
+  (keymap-global-set "M-s M-b" 'consult-buffer-other-window)
+  (keymap-global-set "M-g o" 'consult-outline)
+  (keymap-global-set "M-g m" 'consult-mark)
+  (keymap-global-set "M-g l" 'consult-goto-line)
+
+#+end_src
+
+*** affe
+非同期補完候補生成器
+#+begin_src emacs-lisp :tangle init.el
+  (add-plugin "affe")
+  (autoloads '(affe-find affe-grep affe-find-document-dir affe-find-dotfiles-dir affe-find-user-emacs-dir) "affe")
+  (with-eval-after-load 'affe
+    (defun affe-find-document-dir ()
+      (interactive)
+      (affe-find (eval-when-compile (expand-file-name "~/Documents"))))
+    (defun affe-find-dotfiles-dir ()
+      (interactive)
+      (affe-find (eval-when-compile (expand-file-name "~/dotfiles"))))
+    (defun affe-find-user-emacs-dir ()
+      (interactive)
+      (affe-find (eval-when-compile (expand-file-name user-emacs-directory))))
+    (with-eval-after-load 'orderless
+      (setq affe-highlight-function 'orderless-highlight-matches
+            affe-regexp-function 'orderless-pattern-compiler)))
+  (keymap-global-set "M-s g" 'affe-grep)
+  (keymap-global-set "M-s f" 'affe-find)
+  (keymap-global-set "M-s M-f" 'affe-find-user-emacs-dir)
+  (keymap-global-set "M-s F" 'affe-find-document-dir)
+  (keymap-global-set "M-s C-f" 'affe-find-dotfiles-dir)
 
 #+end_src
 
