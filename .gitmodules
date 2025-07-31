@@ -1,21 +1,30 @@
 [submodule "plugins/ef-themes"]
 	path = plugins/ef-themes
-	url = git@github.com:protesilaos/ef-themes
+	url = https://github.com/protesilaos/ef-themes
 [submodule "plugins/ddskk"]
 	path = plugins/ddskk
-	url = git@github.com:skk-dev/ddskk
+	url = https://github.com/skk-dev/ddskk
 [submodule "plugins/ddskk-posframe"]
 	path = plugins/ddskk-posframe
-	url = git@github.com:conao3/ddskk-posframe
+	url = https://github.com/conao3/ddskk-posframe
 [submodule "plugins/posframe"]
 	path = plugins/posframe
-	url = git@github.com:tumashu/posframe
+	url = https://github.com/tumashu/posframe
 [submodule "plugins/moody"]
 	path = plugins/moody
-	url = git@github.com:tarsius:moody
+	url = https://github.com/tarsius/moody
 [submodule "plugins/mistty"]
 	path = plugins/mistty
-	url = git@github.com:szermatt/mistty
+	url = https://github.com/szermatt/mistty
 [submodule "plugins/exec-path-from-shell"]
 	path = plugins/exec-path-from-shell
-	url = git@github.com:purcell/exec-path-from-shell
+	url = https://github.com/purcell/exec-path-from-shell
+[submodule "plugins/marginalia"]
+	path = plugins/marginalia
+	url = https://github.com/minad/marginalia
+[submodule "plugins/orderless"]
+	path = plugins/orderless
+	url = https://github.com/oantolin/orderless
+[submodule "plugins/embark"]
+	path = plugins/embark
+	url = https://github.com/oantolin/embark

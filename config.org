@@ -8,7 +8,7 @@
   (let ((current_dir (file-name-directory (buffer-file-name))))
     (cd (concat current_dir "plugins/ddskk"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk"))
-    (async-shell-command "make clean;make;make info")
+    (async-shell-command "make clean;make -j9;make info")
     (cd current_dir)
     (let ((lisp_dir (concat current_dir "lisp")))
       (unless (file-directory-p lisp_dir) (mkdir lisp_dir)))
@@ -594,6 +594,27 @@ when window-system: -nwは別口で止めたいので
 #+begin_src emacs-lisp :tangle init.el
   (add-plugin "mistty")
   (autoload 'mistty "mistty" nil t)
+
+#+end_src
+
+*** marginalia
+標準機能に対するアノテーションの作成 っぽい雰囲気
+#+begin_src emacs-lisp :tangle init.el
+  (add-plugin "marginalia")
+  (autoloads '(marginalia-mode) "marginalia")
+  
+#+end_src
+
+*** embark
+コンテキストアクション発布器
+#+begin_src emacs-lisp :tangle init.el
+  (add-plugin "embark")
+  (autoloads '(embark-act embark-bindings) "embark" nil t)
+  (with-eval-after-load 'embark
+    (marginalia-mode t))
+
+  (global-set-key (kbd "s-e") 'embark-act)
+  (global-set-key (kbd "C-h B") 'embark-bindings)
 
 #+end_src
 

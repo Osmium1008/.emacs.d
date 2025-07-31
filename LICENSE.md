@@ -1,4 +1,4 @@
-* MIT License
+# MIT License
 
 Copyright © 2025 Osmium_1008
 
@@ -22,4 +22,4 @@ SOFTWARE.
 
 ---
 
-MITライセンス 日本語訳(参考) : [[https://licenses.opensource.jp/MIT/MIT.html]]
+MITライセンス 日本語訳(参考) : [https://licenses.opensource.jp/MIT/MIT.html]
