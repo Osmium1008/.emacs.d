@@ -620,20 +620,40 @@ when window-system: -nwは別口で止めたいので
 
 #+end_src
 
-*** fido-vertical
-垂直型の補完候補ウィンドウ 組込みなので呼び出すだけ
+*** vertico
+垂直型の補完候補ウィンドウ fido-verticalはどうも慣れない
 #+begin_src emacs-lisp :tangle init.el
-  (fido-vertical-mode)
-  (keymap-unset minibuffer-local-completion-map "SPC")
-  (add-hook 'minibuffer-setup-hook
-            (lambda () (savehist-mode t)))
+  (eval-and-compile (add-plugin "vertico")
+                     (require 'vertico))
+  (setq vertico-count 20
+        vertico-resize nil
+        vertico-cycle t)
+  (vertico-mode)
+
+#+end_src
+
+*** prescient
+matcher兼filter兼sorter的な役割のやつなはず
+sort部分だけ使う(はず)
+#+begin_src emacs-lisp :tangle init.el
+  (eval-and-compile (add-plugin "prescient"))
+  (eval-when-compile (require 'prescient)
+                     (require 'vertico-prescient))
+  (autoloads '(prescient-persist-mode) "prescient")
+  (autoloads '(vertico-prescient-mode) "vertico-prescient")
+  (with-eval-after-load 'prescient
+    (setq prescient-aggressive-file-save t))
+  (with-eval-after-load 'vertico-prescient
+    (prescient-persist-mode)
+    (setq vertico-prescient-enable-filtering nil))
+  (vertico-prescient-mode t) ;; 初回入力がうまく保存されてくれないため...
 
 #+end_src
 
 *** orderless
 あいまい検索
 #+begin_src emacs-lisp :tangle init.el
-  (add-plugin "orderless")
+  (eval-and-compile (add-plugin "orderless"))
   (eval-when-compile (require 'orderless))
   (with-eval-after-load 'orderless
     (setq orderless-matching-styles '(orderless-prefixes orderless-literal-prefix orderless-regexp)))
@@ -651,7 +671,7 @@ when window-system: -nwは別口で止めたいので
 補完候補生成器
 #+begin_src emacs-lisp :tangle init.el
   (add-plugin "consult")
-  (autoloads '(consult-buffer consult-line consult-goto-line consult-outline consult-mark consult-imenu consult-imenu-multi consult-compile-error) "consult" nil t)
+  (autoloads '(consult-buffer consult-buffer-other-window consult-line consult-goto-line consult-outline consult-mark consult-imenu consult-imenu-multi consult-compile-error) "consult" nil t)
   (keymap-global-set "C-s" 'consult-line)
   (keymap-global-set "M-s b" 'consult-buffer)
   (keymap-global-set "M-s M-b" 'consult-buffer-other-window)
@@ -664,7 +684,8 @@ when window-system: -nwは別口で止めたいので
 *** affe
 非同期補完候補生成器
 #+begin_src emacs-lisp :tangle init.el
-  (add-plugin "affe")
+  (eval-and-compile (add-plugin "affe"))
+  (eval-when-compile (require 'affe))
   (autoloads '(affe-find affe-grep affe-find-document-dir affe-find-dotfiles-dir affe-find-user-emacs-dir) "affe")
   (with-eval-after-load 'affe
     (defun affe-find-document-dir ()

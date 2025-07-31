@@ -34,3 +34,9 @@
 [submodule "plugins/affe"]
 	path = plugins/affe
 	url = https://github.com/minad/affe.git
+[submodule "plugins/vertico"]
+	path = plugins/vertico
+	url = https://github.com/minad/vertico.git
+[submodule "plugins/prescient"]
+	path = plugins/prescient
+	url = https://github.com/radian-software/prescient.el.git
