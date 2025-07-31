@@ -602,7 +602,9 @@ when window-system: -nwは別口で止めたいので
 #+begin_src emacs-lisp :tangle init.el
   (add-plugin "marginalia")
   (autoloads '(marginalia-mode) "marginalia")
-  
+  (add-hook 'minibuffer-setup-hook
+            (lambda () (marginalia-mode t)))
+
 #+end_src
 
 *** embark
@@ -615,6 +617,33 @@ when window-system: -nwは別口で止めたいので
 
   (global-set-key (kbd "s-e") 'embark-act)
   (global-set-key (kbd "C-h B") 'embark-bindings)
+
+#+end_src
+
+*** fido-vertical
+垂直型の補完候補ウィンドウ 組込みなので呼び出すだけ
+#+begin_src emacs-lisp :tangle init.el
+  (fido-vertical-mode)
+  (keymap-unset minibuffer-local-completion-map "SPC")
+  (add-hook 'minibuffer-setup-hook
+            (lambda () (savehist-mode t)))
+
+#+end_src
+
+*** orderless
+あいまい検索
+#+begin_src emacs-lisp :tangle init.el
+  (add-plugin "orderless")
+  (eval-when-compile (require 'orderless))
+  (with-eval-after-load 'orderless
+    (setq orderless-matching-styles '(orderless-prefixes orderless-literal-prefix orderless-regexp)))
+
+  (setq completion-styles '(orderless basic))
+  (add-hook 'minibuffer-setup-hook
+            (lambda ()
+              (require 'orderless)
+              (setq-local orderless-matching-styles '(orderless-prefixes orderless-literal-prefix))
+              (setq-local completion-styles '(orderless basic))) t)
 
 #+end_src
 
@@ -741,7 +770,7 @@ emacsclientの起動時に発火するものでそちらで起動している場
 ** restore while-initialize settings to default
 #+begin_src emacs-lisp :tangle init.el
   (setq file-name-handler-alist my/saved-file-name-handler-alist)
-  (setq gc-cons-threshold (eval-when-compile (* 1024 1024 128)))
+  (setq gc-cons-threshold (eval-when-compile (* 1024 1024 512)))
 
 #+end_src
 
