@@ -523,7 +523,8 @@ when window-system: -nwは別口で止めたいので
 
   (with-eval-after-load 'mwheel
     (setq mouse-wheel-scroll-amount '(1 ((control) . 5)) ; マウスホイールの進み方 5マス進めるよ
-          mouse-wheel-tilt-scroll t)) ; 横スクロール
+          mouse-wheel-tilt-scroll t
+          mouse-wheel-flip-direction t)) ; 横スクロールの方向を自然にする
 
   (with-eval-after-load 'simple
     (setq kill-read-only-ok t
