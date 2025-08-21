@@ -8,6 +8,7 @@
 - [[https://www.gnu.org/software/emacs/][GNU Emacs]] はい
 - 適当なSKK Server
 - [[https://github.com/yuru7/udev-gothic][UDEV Gothic]] これで日本語表示するように設定してあるので...
+- [[https://elpa.gnu.org/packages/queue.html][queue]] なんかGitHub上にないけどCIDERが要求してくるため
 *** Usage
 1. 諸々インストールする
 2. =emacs= のシンボリックリンクを =~/.emacs.d= (だと思う...)に貼る

@@ -40,3 +40,78 @@
 [submodule "plugins/prescient"]
 	path = plugins/prescient
 	url = https://github.com/radian-software/prescient.el.git
+[submodule "plugins/copilot-chat"]
+	path = plugins/copilot-chat
+	url = https://github.com/chep/copilot-chat.el
+[submodule "plugins/corfu"]
+	path = plugins/corfu
+	url = https://github.com/minad/corfu
+[submodule "plugins/magit"]
+	path = plugins/magit
+	url = https://github.com/magit/magit
+[submodule "plugins/cape"]
+	path = plugins/cape
+	url = https://github.com/minad/cape
+[submodule "plugins/eglot-booster"]
+	path = plugins/eglot-booster
+	url = https://github.com/jdtsmith/eglot-booster
+[submodule "plugins/eglot-tempel"]
+	path = plugins/eglot-tempel
+	url = https://github.com/fejfighter/eglot-tempel
+[submodule "plugins/vundo"]
+	path = plugins/vundo
+	url = https://github.com/casouri/vundo
+[submodule "plugins/tempel"]
+	path = plugins/tempel
+	url = https://github.com/minad/tempel
+[submodule "plugins/flycheck"]
+	path = plugins/flycheck
+	url = https://github.com/flycheck/flycheck
+[submodule "plugins/ess"]
+	path = plugins/ess
+	url = https://github.com/emacs-ess/ess
+[submodule "plugins/aio"]
+	path = plugins/aio
+	url = https://github.com/skeeto/emacs-aio
+[submodule "plugins/with-editor"]
+	path = plugins/with-editor
+	url = https://github.com/magit/with-editor
+[submodule "plugins/llama"]
+	path = plugins/llama
+	url = https://github.com/tarsius/llama
+[submodule "plugins/request"]
+	path = plugins/request
+	url = https://github.com/tkf/emacs-request
+[submodule "plugins/polymode"]
+	path = plugins/polymode
+	url = https://github.com/polymode/polymode
+[submodule "plugins/markdown-mode"]
+	path = plugins/markdown-mode
+	url = https://github.com/jrblevin/markdown-mode
+[submodule "plugins/shell-maker"]
+	path = plugins/shell-maker
+	url = https://github.com/xenodium/shell-maker
+[submodule "plugins/mcp"]
+	path = plugins/mcp
+	url = https://github.com/lizqwerscott/mcp.el
+[submodule "plugins/clojure-mode"]
+	path = plugins/clojure-mode
+	url = https://github.com/clojure-emacs/clojure-mode
+[submodule "plugins/sesman"]
+	path = plugins/sesman
+	url = https://github.com/vspinu/sesman.git
+[submodule "plugins/spinner"]
+	path = plugins/spinner
+	url = https://github.com/Malabarba/spinner.el.git
+[submodule "plugins/parseedn"]
+	path = plugins/parseedn
+	url = https://github.com/clojure-emacs/parseedn.git
+[submodule "plugins/cider"]
+	path = plugins/cider
+	url = https://github.com/clojure-emacs/cider.git
+[submodule "plugins/parseclj"]
+	path = plugins/parseclj
+	url = https://github.com/clojure-emacs/parseclj
+[submodule "plugins/transient"]
+	path = plugins/transient
+	url = https://github.com/magit/transient

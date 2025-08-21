@@ -25,11 +25,8 @@
   (let ((current_dir (file-name-directory (buffer-file-name))))
     (byte-recompile-directory current_dir 0 t)
     (delete-file (concat current_dir "lisp/osmium1008-defmacros.elc")) ;; コンパイル時などにキャッシュされているべきでないため
-    (add-to-list 'load-path (concat current_dir "plugins/ddskk"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/tut-code"))
     (add-to-list 'load-path (concat current_dir "plugins/ddskk/nicola"))
-    (add-to-list 'load-path (concat current_dir "plugins/posframe"))
-    (add-to-list 'load-path (concat current_dir "plugins/mistty"))
     (native-compile-async (concat current_dir "init.el"))
     (native-compile-async (concat current_dir "early-init.el"))
     (native-compile-async (concat current_dir "lisp/custom-azik.el"))
@@ -79,9 +76,9 @@
 #+begin_src emacs-lisp :tangle lisp/osmium1008-defmacros.el
   (defmacro add-plugin (plugin-name)
     `(add-to-list 'load-path
-          (eval-when-compile
-                (locate-user-emacs-file
-                      (concat "plugins/" ,plugin-name)))))
+                  (eval-when-compile
+                    (locate-user-emacs-file
+                     (concat "plugins/" ,plugin-name)))))
 
 #+end_src
 
@@ -279,6 +276,106 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
 
 #+end_src
 
+*** set plugin paths
+~load-path~ を設定する
+これ自体はいずれやるのでどこでやっても変わらない...はず?
+**** Libraries (or required)
+他のプラグインが利用する関数群となっているようなプラグインはこっちに
+#+begin_src emacs-lisp :tangle early-init.el
+  ;; Library plugins
+  (eval-and-compile
+                                          ; emacs-aio: required by copylot-chat
+    (add-plugin "aio")
+                                          ; llama: required by Magit
+    (add-plugin "llama")
+                                          ; markdown-mode: required by copilot-chat
+    (add-plugin "markdown-mode")
+                                          ; mcp: required by copilot-chat
+    (add-plugin "mcp")
+                                          ; parseclj: required by CIDER
+    (add-plugin "parseclj")
+                                          ; parseedn: required by CIDER
+    (add-plugin "parseedn")
+                                          ; polymode: required by copilot-chat
+    (add-plugin "polymode")
+                                          ; posframe: required by ddskk-posframe
+    (add-plugin "posframe")
+                                          ; queue: need to manual-install, required by CIDER
+    (add-plugin "queue")
+                                          ; request: required by copilot-chat
+    (add-plugin "request")
+                                          ; sesman: required by CIDER
+    (add-plugin "sesman")
+                                          ; shell-maker: required by copilot-chat
+    (add-plugin "shell-maker")
+                                          ; spinner: required by CIDER
+    (add-plugin "spinner")
+                                          ; transient: required by Magit
+    (add-plugin "transient/lisp")
+                                          ; with-editor: required by Magit
+    (add-plugin "with-editor/lisp"))
+
+#+end_src
+
+**** add-ons
+機能追加系はこっちに
+#+begin_src emacs-lisp :tangle early-init.el
+  ;; add-ons
+  (eval-and-compile
+                                          ; affe: asynchronous consult sources
+    (add-plugin "affe")
+                                          ; cape: merging CAPF
+    (add-plugin "cape")
+                                          ; CIDER: Clojure REPL plugin
+    (add-plugin "cider")
+                                          ; clojure-mode: Clojure major-mode plugin, required by CIDER
+    (add-plugin "clojure-mode")
+                                          ; consult: minibuffer sources, required by affe
+    (add-plugin "consult")
+                                          ; copilot-chat: Chat and Agent mode by GitHub Copilot
+    (add-plugin "copilot-chat")
+                                          ; corfu: popup completion tip
+    (add-plugin "corfu")
+    (add-plugin "corfu/extensions")
+                                          ; Daredevil SKK: Japanese Input Method, required by ddskk-posframe
+    (add-plugin "ddskk")
+                                          ; ddskk-posframe: popup tip for ddskk henkan options
+    (add-plugin "ddskk-posframe")
+                                          ; ef-themes: useful theme collection
+    (add-plugin "ef-themes")
+                                          ; eglot-booster: boosting eglot by emacs-lsp-booster
+    (add-plugin "eglot-booster")
+                                          ; eglot-tempel: inject templates provided by LSP server
+    (add-plugin "eglot-tempel")
+                                          ; embark: context-action
+    (add-plugin "embark")
+                                          ; ESS: statistics analyzer
+    (add-plugin "ess/lisp")
+                                          ; exec-path-from-shell: get environment variables
+    (add-plugin "exec-path-from-shell")
+                                          ; flycheck: linter frontend
+    (add-plugin "flycheck")
+                                          ; Magit: TUI for git
+    (add-plugin "magit/lisp")
+                                          ; Marginalia: annotation collection for emacs embedded functions
+    (add-plugin "marginalia")
+                                          ; MisTTY: Terminal Emulator
+    (add-plugin "mistty")
+                                          ; Moody: modern modeline
+    (add-plugin "moody")
+                                          ; orderless: fuzzy matcher
+    (add-plugin "orderless")
+                                          ; prescient: wise ranker
+    (add-plugin "prescient")
+                                          ; tempel: code snippet frontend
+    (add-plugin "tempel")
+                                          ; vertico: vertical minibuffer menu
+    (add-plugin "vertico")
+                                          ; vundo: secure undo
+    (add-plugin "vundo"))
+
+#+end_src
+
 ** 7. load packages by package.el
 elpacaとか使う場合これを抑制しておかなければならない。
 こちらも ~--batch~ とか ~-q~, ~-Q~ とかでは行われない。
@@ -297,8 +394,6 @@ elpacaとか使う場合これを抑制しておかなければならない。
 *** ddskk
 日本語変換プラグイン もはやいつもの
 #+begin_src emacs-lisp :tangle early-init.el
-  (eval-and-compile
-    (add-plugin "ddskk"))
   (eval-when-compile
     (require 'skk)
     (require 'skk-vars))
@@ -350,9 +445,6 @@ ddskkに変換候補ウィンドウを出してくれる 見た目がよくな�
 ついでに ~autoloads~ はこう使うもの
 #+begin_src emacs-lisp :tangle early-init.el
   ;; ddskk-posframe: 見慣れたポップアップでの補完ウィンドウを出してくれる
-  (eval-and-compile
-    (add-plugin "posframe")
-    (add-plugin "ddskk-posframe"))
   (eval-when-compile (require 'ddskk-posframe))
   (autoloads '(ddskk-posframe-mode) "ddskk-posframe")
   (add-hook 'skk-mode-hook
@@ -386,7 +478,6 @@ default-frame-alistはいろんなところで読み取られるので割と便�
     (menu-bar-mode -1))
                                           ; load theme & vc-edited-state の初回埋め込み
   (eval-and-compile
-    (add-plugin "ef-themes")
     (require 'ef-themes)
     (ef-themes-select 'ef-frost))
   (with-eval-after-load 'vc-hooks
@@ -570,7 +661,6 @@ when window-system: -nwは別口で止めたいので
 *** moody
 #+begin_src emacs-lisp :tangle init.el
   (eval-and-compile
-    (add-plugin "moody")
     (require 'moody))
   (moody-replace-mode-line-front-space)
   (moody-replace-mode-line-buffer-identification)
@@ -581,7 +671,6 @@ when window-system: -nwは別口で止めたいので
 *** set path
 少し時間食う処理っぽいので遅延させた方がよいかもしれない
 #+begin_src emacs-lisp :tangle init.el
-  (eval-and-compile (add-plugin "exec-path-from-shell"))
   (autoloads '(exec-path-from-shell-initialize) "exec-path-from-shell" nil t)
 
   (whenac (or my/IS_LINUX my/IS_MAC)
@@ -593,7 +682,6 @@ when window-system: -nwは別口で止めたいので
 *** mistty
 一応autoloadだけ引っ掛けておく
 #+begin_src emacs-lisp :tangle init.el
-  (add-plugin "mistty")
   (autoload 'mistty "mistty" nil t)
 
 #+end_src
@@ -601,7 +689,6 @@ when window-system: -nwは別口で止めたいので
 *** marginalia
 標準機能に対するアノテーションの作成 っぽい雰囲気
 #+begin_src emacs-lisp :tangle init.el
-  (add-plugin "marginalia")
   (autoloads '(marginalia-mode) "marginalia")
   (add-hook 'minibuffer-setup-hook
             (lambda () (marginalia-mode t)))
@@ -611,7 +698,6 @@ when window-system: -nwは別口で止めたいので
 *** embark
 コンテキストアクション発布器
 #+begin_src emacs-lisp :tangle init.el
-  (add-plugin "embark")
   (autoloads '(embark-act embark-bindings) "embark" nil t)
   (with-eval-after-load 'embark
     (marginalia-mode t))
@@ -624,8 +710,8 @@ when window-system: -nwは別口で止めたいので
 *** vertico
 垂直型の補完候補ウィンドウ fido-verticalはどうも慣れない
 #+begin_src emacs-lisp :tangle init.el
-  (eval-and-compile (add-plugin "vertico")
-                     (require 'vertico))
+  (eval-and-compile
+    (require 'vertico))
   (setq vertico-count 20
         vertico-resize nil
         vertico-cycle t)
@@ -637,7 +723,6 @@ when window-system: -nwは別口で止めたいので
 matcher兼filter兼sorter的な役割のやつなはず
 sort部分だけ使う(はず)
 #+begin_src emacs-lisp :tangle init.el
-  (eval-and-compile (add-plugin "prescient"))
   (eval-when-compile (require 'prescient)
                      (require 'vertico-prescient))
   (autoloads '(prescient-persist-mode) "prescient")
@@ -654,7 +739,6 @@ sort部分だけ使う(はず)
 *** orderless
 あいまい検索
 #+begin_src emacs-lisp :tangle init.el
-  (eval-and-compile (add-plugin "orderless"))
   (eval-when-compile (require 'orderless))
   (with-eval-after-load 'orderless
     (setq orderless-matching-styles '(orderless-prefixes orderless-literal-prefix orderless-regexp)))
@@ -671,7 +755,6 @@ sort部分だけ使う(はず)
 *** consult
 補完候補生成器
 #+begin_src emacs-lisp :tangle init.el
-  (add-plugin "consult")
   (autoloads '(consult-buffer consult-buffer-other-window consult-line consult-goto-line consult-outline consult-mark consult-imenu consult-imenu-multi consult-compile-error) "consult" nil t)
   (keymap-global-set "C-s" 'consult-line)
   (keymap-global-set "M-s b" 'consult-buffer)
@@ -685,7 +768,6 @@ sort部分だけ使う(はず)
 *** affe
 非同期補完候補生成器
 #+begin_src emacs-lisp :tangle init.el
-  (eval-and-compile (add-plugin "affe"))
   (eval-when-compile (require 'affe))
   (autoloads '(affe-find affe-grep affe-find-document-dir affe-find-dotfiles-dir affe-find-user-emacs-dir) "affe")
   (with-eval-after-load 'affe
