@@ -115,3 +115,6 @@
 [submodule "plugins/transient"]
 	path = plugins/transient
 	url = https://github.com/magit/transient
+[submodule "plugins/puni"]
+	path = plugins/puni
+	url = https://github.com/AmaiKinono/puni

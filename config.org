@@ -372,7 +372,9 @@ gc-cons-threshold: そんなGCとか必要になる処理挟まないと思う�
                                           ; vertico: vertical minibuffer menu
     (add-plugin "vertico")
                                           ; vundo: secure undo
-    (add-plugin "vundo"))
+    (add-plugin "vundo")
+                                          ; puni: soft parenthesis edit
+    (add-plugin "puni"))
 
 #+end_src
 
